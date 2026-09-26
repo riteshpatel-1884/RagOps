@@ -10,8 +10,8 @@ export default function PlaygroundPage() {
   const [question, setQuestion] = useState("");
   const [chunkSize, setChunkSize] = useState(400);
   const [chunkOverlap, setChunkOverlap] = useState(80);
-  const [embedder, setEmbedder] = useState("hashing");
-  const [generator, setGenerator] = useState("extractive");
+  const [embedder, setEmbedder] = useState("bge-small-en-v1.5");
+  const [generator, setGenerator] = useState("groq");
   const [topK, setTopK] = useState(5);
 
   const [options, setOptions] = useState(null);
@@ -70,13 +70,13 @@ export default function PlaygroundPage() {
             label="Embedder"
             value={embedder}
             onChange={setEmbedder}
-            options={options?.embedders || [{ value: "hashing", label: "Hashing" }]}
+            options={options?.embedders || [{ value: "bge-small-en-v1.5", label: "BGE Small EN v1.5" }]}
           />
           <LabeledSelect
             label="Generator"
             value={generator}
             onChange={setGenerator}
-            options={options?.generators || [{ value: "extractive", label: "Extractive" }]}
+            options={options?.generators || [{ value: "groq", label: "Groq" }]}
           />
           <LabeledInput label="Top K" type="number" value={topK} onChange={(v) => setTopK(Number(v))} />
         </div>

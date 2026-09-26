@@ -14,8 +14,8 @@ export default function ExperimentPage() {
   const [chunkSizesStr, setChunkSizesStr] = useState("200,400");
   const [chunkOverlapsStr, setChunkOverlapsStr] = useState("40,80");
   const [topKsStr, setTopKsStr] = useState("3,5");
-  const [embedder, setEmbedder] = useState("hashing");
-  const [generator, setGenerator] = useState("extractive");
+  const [embedder, setEmbedder] = useState("bge-small-en-v1.5");
+  const [generator, setGenerator] = useState("groq");
   const [judge, setJudge] = useState("offline");
   const [skipGeneration, setSkipGeneration] = useState(false);
   const [sortBy, setSortBy] = useState("recall");
@@ -75,13 +75,13 @@ export default function ExperimentPage() {
             label="Embedder"
             value={embedder}
             onChange={setEmbedder}
-            options={options?.embedders || [{ value: "hashing", label: "Hashing" }]}
+            options={options?.embedders || [{ value: "bge-small-en-v1.5", label: "BGE Small EN v1.5" }]}
           />
           <LabeledSelect
             label="Generator"
             value={generator}
             onChange={setGenerator}
-            options={options?.generators || [{ value: "extractive", label: "Extractive" }]}
+            options={options?.generators || [{ value: "groq", label: "Groq" }]}
           />
           <LabeledSelect label="Rank by" value={sortBy} onChange={setSortBy} options={METRIC_OPTIONS.map((m) => ({ value: m, label: m }))} />
         </div>

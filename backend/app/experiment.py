@@ -11,14 +11,11 @@ Usage:
     # Fast retrieval-only sweep (no LLM calls, good for quick iteration)
     python experiment.py --chunk_sizes 200 400 --top_ks 3 5 --skip_generation
 
-    # Full sweep including generation metrics with the offline generator
+    # Full sweep including generation metrics
     python experiment.py --chunk_sizes 200 400 --chunk_overlaps 40 80 --top_ks 3 5
 
-    # Compare embedders
-    python experiment.py --embedders hashing huggingface --top_ks 5
-
-    # Include a real LLM in the sweep (slower + costs API calls per config)
-    python experiment.py --generators extractive groq --top_ks 5
+    # Compare embedding models
+    python experiment.py --embedders bge-small-en-v1.5 bge-m3 --top_ks 5
 
     # Rank by a specific metric instead of the default (recall)
     python experiment.py --chunk_sizes 200 400 --sort_by faithfulness
@@ -58,8 +55,7 @@ def build_gen_evaluators(judge: str, pipeline: RetrievalPipeline):
     if judge == "llm":
         if not hasattr(pipeline.generator, "chat_model"):
             raise ValueError(
-                "judge='llm' requires a real LLM generator in this config (openai/anthropic/groq), "
-                "since it reuses that chat model as the judge."
+                "judge='llm' requires the groq generator, since it reuses that chat model as the judge."
             )
         chat_model = pipeline.generator.chat_model
         return LLMJudgeFaithfulness(chat_model), LLMJudgeRelevance(chat_model)
@@ -161,16 +157,11 @@ def parse_args():
     p.add_argument("--chunk_sizes", type=int, nargs="+", default=[200, 400])
     p.add_argument("--chunk_overlaps", type=int, nargs="+", default=[40, 80])
     p.add_argument(
-        "--embedders", type=str, nargs="+", default=["hashing"], choices=["hashing", "openai", "huggingface"]
+        "--embedders", type=str, nargs="+", default=["bge-small-en-v1.5"],
+        choices=["bge-m3", "qwen3-embedding-0.6b", "bge-small-en-v1.5"],
     )
     p.add_argument("--top_ks", type=int, nargs="+", default=[3, 5])
-    p.add_argument(
-        "--generators",
-        type=str,
-        nargs="+",
-        default=["extractive"],
-        choices=["extractive", "openai", "anthropic", "groq"],
-    )
+    p.add_argument("--generators", type=str, nargs="+", default=["groq"], choices=["groq"])
     p.add_argument("--judge", type=str, default="offline", choices=["offline", "llm"])
     p.add_argument(
         "--skip_generation",

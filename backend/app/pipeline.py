@@ -21,10 +21,10 @@ from generator import get_generator
 class PipelineConfig:
     chunk_size: int = 400       # characters (LangChain splitter convention)
     chunk_overlap: int = 80
-    embedder_name: str = "hashing"
+    embedder_name: str = "bge-small-en-v1.5"   # one of: bge-m3, qwen3-embedding-0.6b, bge-small-en-v1.5
     top_k: int = 5
     collection_name: str = "rag_chunks"
-    generator_name: str = "extractive"   # Phase 2: which generator to use
+    generator_name: str = "groq"               # only "groq" is supported
 
     def as_dict(self):
         return asdict(self)

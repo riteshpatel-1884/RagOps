@@ -4,8 +4,8 @@ Phase 1: Retrieval Evaluation Engine — main entry point.
 Usage:
     python evaluate.py
     python evaluate.py --chunk_size 200 --chunk_overlap 40 --top_k 3
-    python evaluate.py --embedder openai        # requires OPENAI_API_KEY + network
-    python evaluate.py --embedder huggingface   # requires network to download model weights
+    python evaluate.py --embedder bge-m3               # BAAI/bge-m3
+    python evaluate.py --embedder qwen3-embedding-0.6b  # Qwen/Qwen3-Embedding-0.6B
 
 Loads documents + a labeled test dataset, builds a retrieval pipeline with
 the given config, runs every test question through it, and prints
@@ -91,7 +91,10 @@ def parse_args():
     p = argparse.ArgumentParser(description="Run the Phase 1 Retrieval Evaluation Engine")
     p.add_argument("--chunk_size", type=int, default=400, help="characters")
     p.add_argument("--chunk_overlap", type=int, default=80, help="characters")
-    p.add_argument("--embedder", type=str, default="hashing", choices=["hashing", "openai", "huggingface"])
+    p.add_argument(
+        "--embedder", type=str, default="bge-small-en-v1.5",
+        choices=["bge-m3", "qwen3-embedding-0.6b", "bge-small-en-v1.5"],
+    )
     p.add_argument("--top_k", type=int, default=5)
     return p.parse_args()
 

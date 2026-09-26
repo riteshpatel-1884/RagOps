@@ -63,12 +63,12 @@ class TestDatasetItem(BaseModel):
 class RetrievalEvalRequest(BaseModel):
     chunk_size: int = 400
     chunk_overlap: int = 80
-    embedder_name: str = "hashing"
+    embedder_name: str = "bge-small-en-v1.5"
     top_k: int = 5
 
 
 class GenerationEvalRequest(RetrievalEvalRequest):
-    generator_name: str = "extractive"
+    generator_name: str = "groq"
     judge: str = "offline"
 
 
@@ -76,17 +76,17 @@ class AskRequest(BaseModel):
     question: str
     chunk_size: int = 400
     chunk_overlap: int = 80
-    embedder_name: str = "hashing"
+    embedder_name: str = "bge-small-en-v1.5"
     top_k: int = 5
-    generator_name: str = "extractive"
+    generator_name: str = "groq"
 
 
 class ExperimentRequest(BaseModel):
     chunk_sizes: List[int] = [200, 400]
     chunk_overlaps: List[int] = [40, 80]
-    embedders: List[str] = ["hashing"]
+    embedders: List[str] = ["bge-small-en-v1.5"]
     top_ks: List[int] = [3, 5]
-    generators: List[str] = ["extractive"]
+    generators: List[str] = ["groq"]
     judge: str = "offline"
     skip_generation: bool = False
     sort_by: str = "recall"
@@ -107,9 +107,9 @@ class RecordVersionRequest(BaseModel):
     name: str
     chunk_size: int = 400
     chunk_overlap: int = 80
-    embedder_name: str = "hashing"
+    embedder_name: str = "bge-small-en-v1.5"
     top_k: int = 5
-    generator_name: str = "extractive"
+    generator_name: str = "groq"
     judge: str = "offline"
     notes: str = ""
     set_baseline: bool = False
@@ -132,15 +132,12 @@ class SetBaselineRequest(BaseModel):
 def config_options():
     return {
         "embedders": [
-            {"value": "hashing", "label": "Hashing (offline, no setup)"},
-            {"value": "huggingface", "label": "HuggingFace (sentence-transformers, downloads a model)"},
-            {"value": "openai", "label": "OpenAI (requires OPENAI_API_KEY)"},
+            {"value": "bge-small-en-v1.5", "label": "BGE Small EN v1.5 (fastest, lightest)"},
+            {"value": "bge-m3", "label": "BGE M3 (strongest, multilingual)"},
+            {"value": "qwen3-embedding-0.6b", "label": "Qwen3 Embedding 0.6B"},
         ],
         "generators": [
-            {"value": "extractive", "label": "Extractive (offline, no LLM)"},
             {"value": "groq", "label": "Groq (requires GROQ_API_KEY)"},
-            {"value": "openai", "label": "OpenAI (requires OPENAI_API_KEY)"},
-            {"value": "anthropic", "label": "Anthropic (requires ANTHROPIC_API_KEY)"},
         ],
         "judges": [
             {"value": "offline", "label": "Offline (lexical overlap + embedding similarity)"},

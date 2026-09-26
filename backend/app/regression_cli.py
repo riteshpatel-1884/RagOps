@@ -32,9 +32,12 @@ def parse_args():
     rec.add_argument("name")
     rec.add_argument("--chunk_size", type=int, default=400)
     rec.add_argument("--chunk_overlap", type=int, default=80)
-    rec.add_argument("--embedder", type=str, default="hashing", choices=["hashing", "openai", "huggingface"])
+    rec.add_argument(
+        "--embedder", type=str, default="bge-small-en-v1.5",
+        choices=["bge-m3", "qwen3-embedding-0.6b", "bge-small-en-v1.5"],
+    )
     rec.add_argument("--top_k", type=int, default=5)
-    rec.add_argument("--generator", type=str, default="extractive", choices=["extractive", "openai", "anthropic", "groq"])
+    rec.add_argument("--generator", type=str, default="groq", choices=["groq"])
     rec.add_argument("--judge", type=str, default="offline", choices=["offline", "llm"])
     rec.add_argument("--notes", type=str, default="")
     rec.add_argument("--set_baseline", action="store_true")

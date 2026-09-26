@@ -6,11 +6,9 @@ score Faithfulness and Answer Relevance.
 
 Usage:
     python evaluate_generation.py
-    python evaluate_generation.py --generator openai        # requires OPENAI_API_KEY
-    python evaluate_generation.py --generator anthropic      # requires ANTHROPIC_API_KEY
-    python evaluate_generation.py --generator groq           # requires GROQ_API_KEY
+    python evaluate_generation.py --generator groq          # requires GROQ_API_KEY
     python evaluate_generation.py --chunk_size 300 --top_k 3
-    python evaluate_generation.py --judge llm --generator openai   # use LLM-as-judge instead of offline metrics
+    python evaluate_generation.py --judge llm                # use LLM-as-judge instead of offline metrics
 """
 import argparse
 import json
@@ -43,9 +41,7 @@ def build_evaluators(judge: str, pipeline: RetrievalPipeline):
     elif judge == "llm":
         if not hasattr(pipeline.generator, "chat_model"):
             raise ValueError(
-                "--judge llm requires a real LLM generator (--generator openai or --generator "
-                "anthropic) since it reuses that chat model as the judge. The offline extractive "
-                "generator has no chat model to judge with."
+                "--judge llm requires the groq generator, since it reuses that chat model as the judge."
             )
         chat_model = pipeline.generator.chat_model
         faithfulness_eval = LLMJudgeFaithfulness(chat_model)
@@ -108,16 +104,19 @@ def parse_args():
     p = argparse.ArgumentParser(description="Run the Phase 2 Generation Evaluation Engine")
     p.add_argument("--chunk_size", type=int, default=400)
     p.add_argument("--chunk_overlap", type=int, default=80)
-    p.add_argument("--embedder", type=str, default="hashing", choices=["hashing", "openai", "huggingface"])
+    p.add_argument(
+        "--embedder", type=str, default="bge-small-en-v1.5",
+        choices=["bge-m3", "qwen3-embedding-0.6b", "bge-small-en-v1.5"],
+    )
     p.add_argument("--top_k", type=int, default=5)
-    p.add_argument("--generator", type=str, default="extractive", choices=["extractive", "openai", "anthropic", "groq"])
+    p.add_argument("--generator", type=str, default="groq", choices=["groq"])
     p.add_argument(
         "--judge",
         type=str,
         default="offline",
         choices=["offline", "llm"],
         help="'offline' uses lexical-overlap + embedding-similarity (no LLM calls). "
-        "'llm' requires --generator to be a real LLM (openai/anthropic/groq), since it reuses that chat model as the judge.",
+        "'llm' reuses the groq generator's chat model as the judge.",
     )
     return p.parse_args()
 

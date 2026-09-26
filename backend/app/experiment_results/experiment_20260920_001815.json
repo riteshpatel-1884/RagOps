@@ -1,0 +1,121 @@
+[
+  {
+    "config": {
+      "chunk_size": 400,
+      "chunk_overlap": 40,
+      "embedder_name": "hashing",
+      "top_k": 5,
+      "collection_name": "rag_chunks",
+      "generator_name": "extractive"
+    },
+    "recall": 0.5555555555555556,
+    "precision": 1.0,
+    "mrr": 1.0,
+    "ndcg": 1.0,
+    "elapsed_seconds": 3.25,
+    "faithfulness": 1.0,
+    "relevance": 0.12588059197957685
+  },
+  {
+    "config": {
+      "chunk_size": 400,
+      "chunk_overlap": 80,
+      "embedder_name": "hashing",
+      "top_k": 5,
+      "collection_name": "rag_chunks",
+      "generator_name": "extractive"
+    },
+    "recall": 0.5,
+    "precision": 1.0,
+    "mrr": 1.0,
+    "ndcg": 1.0,
+    "elapsed_seconds": 3.16,
+    "faithfulness": 1.0,
+    "relevance": 0.14186529464245265
+  },
+  {
+    "config": {
+      "chunk_size": 400,
+      "chunk_overlap": 40,
+      "embedder_name": "hashing",
+      "top_k": 3,
+      "collection_name": "rag_chunks",
+      "generator_name": "extractive"
+    },
+    "recall": 0.3333333333333333,
+    "precision": 1.0,
+    "mrr": 1.0,
+    "ndcg": 1.0,
+    "elapsed_seconds": 3.55,
+    "faithfulness": 0.8,
+    "relevance": 0.13821647365713235
+  },
+  {
+    "config": {
+      "chunk_size": 400,
+      "chunk_overlap": 80,
+      "embedder_name": "hashing",
+      "top_k": 3,
+      "collection_name": "rag_chunks",
+      "generator_name": "extractive"
+    },
+    "recall": 0.3,
+    "precision": 1.0,
+    "mrr": 1.0,
+    "ndcg": 1.0,
+    "elapsed_seconds": 3.03,
+    "faithfulness": 1.0,
+    "relevance": 0.1535917528006213
+  },
+  {
+    "config": {
+      "chunk_size": 200,
+      "chunk_overlap": 40,
+      "embedder_name": "hashing",
+      "top_k": 5,
+      "collection_name": "rag_chunks",
+      "generator_name": "extractive"
+    },
+    "recall": 0.25,
+    "precision": 1.0,
+    "mrr": 1.0,
+    "ndcg": 1.0,
+    "elapsed_seconds": 3.54,
+    "faithfulness": 1.0,
+    "relevance": 0.19846344361977247
+  },
+  {
+    "config": {
+      "chunk_size": 200,
+      "chunk_overlap": 80,
+      "embedder_name": "hashing",
+      "top_k": 5,
+      "collection_name": "rag_chunks",
+      "generator_name": "extractive"
+    },
+    "recall": 0.21739130434782608,
+    "precision": 1.0,
+    "mrr": 1.0,
+    "ndcg": 1.0,
+    "elapsed_seconds": 3.61,
+    "faithfulness": 1.0,
+    "relevance": 0.20181699121989488
+  },
+  {
+    "config": {
+      "chunk_size": 200,
+      "chunk_overlap": 80,
+      "embedder_name": "hashing",
+      "top_k": 3,
+      "collection_name": "rag_chunks",
+      "generator_name": "extractive"
+    },
+    "recall": 0.13043478260869565,
+    "precision": 1.0,
+    "mrr": 1.0,
+    "ndcg": 1.0,
+    "elapsed_seconds": 3.26,
+    "faithfulness": 1.0,
+    "relevance": 0.20020374896508084
+  }
+]

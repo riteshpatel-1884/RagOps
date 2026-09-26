@@ -1,52 +1,72 @@
 [
   {
     "id": "q1",
-    "question": "How many weeks of paid parental leave do full-time employees get?",
-    "relevant_doc_ids": ["parental_leave_policy"]
+    "question": "What degree is Ritesh Patel pursuing and at which university?",
+    "relevant_doc_ids": [
+      "ritesh_AI"
+    ]
   },
   {
     "id": "q2",
-    "question": "Can parental leave be split into two separate blocks?",
-    "relevant_doc_ids": ["parental_leave_policy"]
+    "question": "What is Ritesh Patel's current GPA?",
+    "relevant_doc_ids": [
+      "ritesh_AI"
+    ]
   },
   {
     "id": "q3",
-    "question": "How many days per week can employees work remotely without special approval?",
-    "relevant_doc_ids": ["remote_work_policy"]
+    "question": "Where did Ritesh work as a Data Analyst intern?",
+    "relevant_doc_ids": [
+      "ritesh_AI"
+    ]
   },
   {
     "id": "q4",
-    "question": "Does the company provide a stipend for home office equipment?",
-    "relevant_doc_ids": ["remote_work_policy"]
+    "question": "How many test cases were used in the LLM Evaluation Platform?",
+    "relevant_doc_ids": [
+      "ritesh_AI"
+    ]
   },
   {
     "id": "q5",
-    "question": "How long do I have to submit an expense after incurring it?",
-    "relevant_doc_ids": ["expense_reimbursement_policy"]
+    "question": "Which Ragas metrics did Ritesh use to evaluate his RAG system?",
+    "relevant_doc_ids": [
+      "ritesh_AI"
+    ]
   },
   {
     "id": "q6",
-    "question": "Is alcohol at a non-client event reimbursable?",
-    "relevant_doc_ids": ["expense_reimbursement_policy"]
+    "question": "What types of queries does the ambiguity detection layer classify?",
+    "relevant_doc_ids": [
+      "ritesh_AI"
+    ]
   },
   {
     "id": "q7",
-    "question": "How often are formal performance reviews conducted?",
-    "relevant_doc_ids": ["performance_review_policy"]
+    "question": "What problem does the Job Application Tracker & Rejection Analytics project solve?",
+    "relevant_doc_ids": [
+      "ritesh_AI"
+    ]
   },
   {
     "id": "q8",
-    "question": "What happens if an employee receives a does-not-meet-expectations rating?",
-    "relevant_doc_ids": ["performance_review_policy"]
+    "question": "What Generative AI certification has Ritesh completed?",
+    "relevant_doc_ids": [
+      "ritesh_AI"
+    ]
   },
   {
     "id": "q9",
-    "question": "How many PTO days do employees get after five years of service?",
-    "relevant_doc_ids": ["paid_time_off_policy"]
+    "question": "Which frameworks does Ritesh list in his resume?",
+    "relevant_doc_ids": [
+      "ritesh_AI"
+    ]
   },
   {
     "id": "q10",
-    "question": "Can unused PTO be carried over to the next year?",
-    "relevant_doc_ids": ["paid_time_off_policy"]
+    "question": "What are the main technical skills listed under AI/ML?",
+    "relevant_doc_ids": [
+      "ritesh_AI"
+    ]
   }
 ]

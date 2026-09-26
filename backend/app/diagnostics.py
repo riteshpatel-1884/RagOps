@@ -116,8 +116,8 @@ def diagnose_config(result: dict) -> Diagnosis:
         causes.append("Embedding model isn't distinguishing relevant from irrelevant chunks well, "
                        "or a reranking stage is missing.")
         suggestions.append({
-            "label": "Try a stronger embedding model",
-            "param": "embedder_name", "op": "set", "value": "huggingface",
+            "label": "Try a stronger embedding model (bge-m3)",
+            "param": "embedder_name", "op": "set", "value": "bge-m3",
         })
 
     # --- Rule 4: ndcg well below recall -> ranking quality problem despite ok recall ---
@@ -163,11 +163,11 @@ def diagnose_config(result: dict) -> Diagnosis:
         bottlenecks.append("Answer relevance")
         evidence.append(f"Faithfulness is fine ({faithfulness:.2f}) but relevance is low ({relevance:.2f}) — "
                          f"the answer is accurate to the context but may not be squarely addressing the question.")
-        causes.append("Prompt doesn't emphasize directly answering the question, or (if using the offline "
-                       "hashing embedder) the relevance metric itself is weak at semantic matching.")
+        causes.append("Prompt doesn't emphasize directly answering the question, or a weaker embedding "
+                       "model is producing a less discriminative relevance score.")
         suggestions.append({
-            "label": "Re-check with a stronger embedder before trusting this relevance score",
-            "param": "embedder_name", "op": "set", "value": "huggingface",
+            "label": "Re-check with a stronger embedder (bge-m3) before trusting this relevance score",
+            "param": "embedder_name", "op": "set", "value": "bge-m3",
         })
 
     if not bottlenecks:
