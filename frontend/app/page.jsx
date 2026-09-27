@@ -5,8 +5,6 @@ import {
   FlaskRound,
   BarChart3,
   FlaskConical,
-  FileQuestion,
-  GitBranch,
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -32,16 +30,6 @@ const PHASES = [
     title: "Experiment",
     description: "Sweep chunk sizes, overlaps, embedders and generators across a full grid, ranked automatically.",
   },
-  {
-    icon: FileQuestion,
-    title: "Diagnose",
-    description: "Get per-config bottleneck diagnoses, a Pareto frontier between two metrics, and actionable follow-ups.",
-  },
-  {
-    icon: GitBranch,
-    title: "Versions",
-    description: "Record named versions and catch regressions across every metric before they ship.",
-  },
 ];
 
 export default function HomePage() {
@@ -62,7 +50,7 @@ export default function HomePage() {
       <div className="relative mx-auto flex max-w-5xl flex-col items-center px-6 pb-20 pt-28 text-center">
         <div className="mb-6 flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted">
           <div className="h-1.5 w-1.5 rounded-full bg-accent" />
-          Phase 0–5 · Production RAG evaluation
+          Production RAG evaluation
         </div>
 
         <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-text sm:text-5xl">
@@ -70,8 +58,8 @@ export default function HomePage() {
         </h1>
 
         <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
-          RAGOps evaluates retrieval and generation quality, sweeps pipeline configs at scale, diagnoses
-          bottlenecks automatically, and catches regressions before they ship.
+          RAGOps evaluates retrieval and generation quality and sweeps pipeline configs at scale so you can find
+          the best-performing setup for your data.
         </p>
 
         <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
@@ -92,7 +80,7 @@ export default function HomePage() {
       </div>
 
       <div id="phases" className="relative mx-auto max-w-5xl px-6 pb-24">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PHASES.map((phase) => {
             const Icon = phase.icon;
             return (

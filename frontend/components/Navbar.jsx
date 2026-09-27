@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { LayoutDashboard, FlaskConical, FileQuestion, BarChart3, FlaskRound, GitBranch } from "lucide-react";
+import { LayoutDashboard, FlaskConical, BarChart3, FlaskRound } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
 // Only real, built pages. Nothing here should ever 404.
@@ -21,8 +21,6 @@ const NAV = [
     items: [
       { label: "Evaluate", href: "/workspace/evaluate", icon: BarChart3 },
       { label: "Experiments", href: "/workspace/experiment", icon: FlaskConical },
-      { label: "Diagnose", href: "/workspace/diagnose", icon: FileQuestion },
-      { label: "Versions", href: "/workspace/versions", icon: GitBranch },
     ],
   },
 ];
@@ -70,7 +68,7 @@ export default function Navbar() {
       </nav>
 
       <div className="flex items-center justify-between border-t border-border px-5 py-3">
-        <span className="text-xs text-muted">Phase 0–5</span>
+        <span className="text-xs text-muted">RAGOps</span>
         <ThemeToggle />
       </div>
     </aside>

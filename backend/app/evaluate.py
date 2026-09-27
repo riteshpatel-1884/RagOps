@@ -15,8 +15,8 @@ import argparse
 import json
 from pathlib import Path
 
-from pipeline import PipelineConfig, RetrievalPipeline
-from metrics import recall_at_k, precision_at_k, reciprocal_rank, ndcg_at_k, first_relevant_rank, aggregate_metrics
+from app.pipeline import PipelineConfig, RetrievalPipeline
+from app.metrics import recall_at_k, precision_at_k, reciprocal_rank, ndcg_at_k, first_relevant_rank, aggregate_metrics
 
 DATA_DIR = Path(__file__).parent / "data"
 

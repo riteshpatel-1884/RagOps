@@ -1,6 +1,6 @@
 """
-Phase 4.5: API layer — exposes Phases 1-4 (retrieval eval, generation eval,
-experiment sweeps, diagnostics) as HTTP endpoints for the Next.js frontend.
+API layer — exposes retrieval eval, generation eval, and experiment sweeps
+as HTTP endpoints for the Next.js frontend.
 
 Design choice: rather than rearchitecting the CLI scripts, uploaded
 documents/test-datasets are written straight into data/documents.json and
@@ -22,18 +22,16 @@ import json
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import List, Dict
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from pipeline import PipelineConfig, RetrievalPipeline
-import evaluate as evaluate_mod
-import evaluate_generation as evaluate_generation_mod
-import experiment as experiment_mod
-import diagnostics as diagnostics_mod
-import regression as regression_mod
+from app.pipeline import PipelineConfig, RetrievalPipeline
+import app.evaluate as evaluate_mod
+import app.evaluate_generation as evaluate_generation_mod
+import app.experiment as experiment_mod
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "experiment_results"
@@ -90,38 +88,6 @@ class ExperimentRequest(BaseModel):
     judge: str = "offline"
     skip_generation: bool = False
     sort_by: str = "recall"
-
-
-class DiagnoseRequest(BaseModel):
-    filename: Optional[str] = None          # load from experiment_results/, or...
-    results: Optional[List[dict]] = None    # ...use these results directly
-    metric_x: str = "recall"
-    metric_y: str = "faithfulness"
-
-
-class AutoFollowUpRequest(DiagnoseRequest):
-    judge: str = "offline"
-
-
-class RecordVersionRequest(BaseModel):
-    name: str
-    chunk_size: int = 400
-    chunk_overlap: int = 80
-    embedder_name: str = "bge-small-en-v1.5"
-    top_k: int = 5
-    generator_name: str = "groq"
-    judge: str = "offline"
-    notes: str = ""
-    set_baseline: bool = False
-
-
-class CheckRegressionRequest(BaseModel):
-    name: str
-    against: Optional[str] = None  # defaults to current baseline
-
-
-class SetBaselineRequest(BaseModel):
-    name: str
 
 
 # ---------------------------------------------------------------------------
@@ -477,163 +443,6 @@ def get_experiment(filename: str):
         return json.load(f)
 
 
-# ---------------------------------------------------------------------------
-# Phase 4: diagnostics
-# ---------------------------------------------------------------------------
-
-def _load_results_for_diagnosis(req: DiagnoseRequest) -> List[dict]:
-    if req.results:
-        return req.results
-    if req.filename:
-        path = RESULTS_DIR / req.filename
-        if not path.exists():
-            raise HTTPException(404, f"Experiment file '{req.filename}' not found.")
-        with open(path) as f:
-            return json.load(f)
-    latest = diagnostics_mod.latest_results_file(RESULTS_DIR)
-    if latest is None:
-        raise HTTPException(400, "No experiment results available. Run /api/experiment first, or pass 'results' directly.")
-    with open(latest) as f:
-        return json.load(f)
-
-
-@app.post("/api/diagnose")
-def diagnose(req: DiagnoseRequest):
-    results = _load_results_for_diagnosis(req)
-    return diagnostics_mod.build_diagnostic_report(results, req.metric_x, req.metric_y)
-
-
-@app.post("/api/diagnose/single")
-def diagnose_single(metrics: dict):
-    """Ad-hoc diagnosis of one metrics dict, e.g. {"recall": 0.45, "precision": 0.55, ...}."""
-    return diagnostics_mod.diagnose_config(metrics).as_dict()
-
-
-@app.post("/api/diagnose/auto-follow-up")
-def auto_follow_up(req: AutoFollowUpRequest):
-    """
-    Closed-loop: find the worst config by metric_x, take its top actionable
-    suggestion, build and run that follow-up config for real, and return a
-    before/after comparison. `judge` must match the ORIGINAL sweep's judge
-    or the comparison isn't apples-to-apples (see diagnose.py's docstring
-    for why this matters).
-    """
-    results = _load_results_for_diagnosis(req)
-    documents, test_set = evaluate_mod.load_data()
-
-    worst = min(results, key=lambda r: r.get(req.metric_x, 0))
-    diagnosis = diagnostics_mod.diagnose_config(worst)
-
-    actionable = [s for s in diagnosis.suggested_experiments if s.get("param")]
-    if not actionable:
-        return {"worst_config": worst["config"], "diagnosis": diagnosis.as_dict(), "followed_up": False,
-                "message": "No actionable suggestion for this config."}
-
-    suggestion = actionable[0]
-    new_config = diagnostics_mod.apply_suggestion(worst["config"], suggestion)
-    if new_config is None:
-        return {"worst_config": worst["config"], "diagnosis": diagnosis.as_dict(), "followed_up": False,
-                "message": "Could not build a follow-up config from this suggestion."}
-
-    try:
-        new_result = experiment_mod.run_single_config(
-            new_config, documents, test_set, judge=req.judge, skip_generation=(req.metric_y not in worst)
-        )
-    except Exception as e:
-        raise HTTPException(500, f"Follow-up run failed: {e}")
-
-    before_after = {}
-    for m in ["recall", "precision", "mrr", "ndcg", "faithfulness", "relevance"]:
-        if m in worst and m in new_result:
-            before_after[m] = {"before": worst[m], "after": new_result[m], "change": new_result[m] - worst[m]}
-
-    return {
-        "worst_config": worst["config"],
-        "diagnosis": diagnosis.as_dict(),
-        "suggestion": suggestion,
-        "new_config": new_config.as_dict(),
-        "before_after": before_after,
-        "followed_up": True,
-    }
-
-
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
-
-
-# ---------------------------------------------------------------------------
-# Phase 5: regression testing
-# ---------------------------------------------------------------------------
-
-@app.post("/api/versions/record")
-def record_version(req: RecordVersionRequest):
-    _require_data()
-    config = PipelineConfig(
-        chunk_size=req.chunk_size, chunk_overlap=req.chunk_overlap,
-        embedder_name=req.embedder_name, top_k=req.top_k, generator_name=req.generator_name,
-    )
-    try:
-        record = regression_mod.record_version(
-            req.name, config, judge=req.judge, notes=req.notes, set_as_baseline=req.set_baseline
-        )
-    except RuntimeError as e:
-        raise HTTPException(500, str(e))
-    return record.as_dict()
-
-
-@app.get("/api/versions")
-def list_versions():
-    history = regression_mod.RegressionHistory()
-    return {"versions": history.list_versions(), "baseline": history.get_baseline_name()}
-
-
-@app.get("/api/versions/{name}")
-def get_version(name: str):
-    history = regression_mod.RegressionHistory()
-    record = history.get_version(name)
-    if record is None:
-        raise HTTPException(404, f"No such version: '{name}'")
-    return record
-
-
-@app.delete("/api/versions/{name}")
-def delete_version(name: str):
-    history = regression_mod.RegressionHistory()
-    try:
-        history.delete_version(name)
-    except ValueError as e:
-        raise HTTPException(404, str(e))
-    return {"deleted": name, "new_baseline": history.get_baseline_name()}
-
-
-@app.post("/api/versions/set-baseline")
-def set_baseline(req: SetBaselineRequest):
-    history = regression_mod.RegressionHistory()
-    try:
-        history.set_baseline(req.name)
-    except ValueError as e:
-        raise HTTPException(404, str(e))
-    return {"baseline": req.name}
-
-
-@app.post("/api/versions/check")
-def check_regression(req: CheckRegressionRequest):
-    history = regression_mod.RegressionHistory()
-
-    new_version = history.get_version(req.name)
-    if new_version is None:
-        raise HTTPException(404, f"No such version: '{req.name}'")
-
-    against_name = req.against or history.get_baseline_name()
-    if against_name is None:
-        raise HTTPException(400, "No baseline set and no 'against' given. Record a first version, or pass 'against'.")
-    if against_name == req.name:
-        raise HTTPException(400, "Can't compare a version against itself.")
-
-    old_version = history.get_version(against_name)
-    if old_version is None:
-        raise HTTPException(404, f"No such version to compare against: '{against_name}'")
-
-    comparison = regression_mod.compare_versions(old_version["metrics"], new_version["metrics"])
-    return {"old_version": against_name, "new_version": req.name, **comparison}

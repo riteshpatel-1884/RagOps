@@ -28,9 +28,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 
-from pipeline import PipelineConfig, RetrievalPipeline
-from metrics import recall_at_k, precision_at_k, reciprocal_rank, ndcg_at_k, aggregate_metrics
-from gen_evaluators import (
+from app.pipeline import PipelineConfig, RetrievalPipeline
+from app.metrics import recall_at_k, precision_at_k, reciprocal_rank, ndcg_at_k, aggregate_metrics
+from app.gen_evaluators import (
     LexicalOverlapFaithfulness,
     EmbeddingSimilarityRelevance,
     LLMJudgeFaithfulness,

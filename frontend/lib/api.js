@@ -44,12 +44,6 @@ async function request(path, options) {
 // ExperimentRow:           { config, recall?, precision?, mrr?, ndcg?, elapsed_seconds?, faithfulness?, relevance?, error? }
 // ExperimentResponse:      { results, failed, sort_by, filename }
 // ExperimentListItem:      { filename, modified }
-// Diagnosis:               { bottleneck, evidence, likely_causes, suggested_experiments: [{ label, param, op, value }] }
-// DiagnosticReport:        { per_config: [{ config, metrics, diagnosis }], metric_x, metric_y, frontier, tradeoff }
-// AutoFollowUpResponse:    { worst_config, diagnosis, suggestion?, new_config?, before_after?, followed_up, message? }
-// VersionRecord:           { name, timestamp, config, metrics, notes }
-// RegressionEntry:         { metric, old, new, delta, direction }
-// RegressionComparison:    { old_version, new_version, regressions, improvements, unchanged, has_regression }
 
 // --- Endpoints ---------------------------------------------------------------
 
@@ -94,31 +88,4 @@ export const api = {
   listExperiments: () => request("/api/experiments"),
 
   getExperiment: (filename) => request(`/api/experiments/${filename}`),
-
-  diagnose: (payload) =>
-    request("/api/diagnose", { method: "POST", body: JSON.stringify(payload) }),
-
-  diagnoseSingle: (metrics) =>
-    request("/api/diagnose/single", { method: "POST", body: JSON.stringify(metrics) }),
-
-  autoFollowUp: (payload) =>
-    request("/api/diagnose/auto-follow-up", { method: "POST", body: JSON.stringify(payload) }),
-
-  // --- Phase 5: regression testing ---
-
-  recordVersion: (payload) =>
-    request("/api/versions/record", { method: "POST", body: JSON.stringify(payload) }),
-
-  listVersions: () => request("/api/versions"),
-
-  getVersion: (name) => request(`/api/versions/${encodeURIComponent(name)}`),
-
-  deleteVersion: (name) =>
-    request(`/api/versions/${encodeURIComponent(name)}`, { method: "DELETE" }),
-
-  setBaseline: (name) =>
-    request("/api/versions/set-baseline", { method: "POST", body: JSON.stringify({ name }) }),
-
-  checkRegression: (payload) =>
-    request("/api/versions/check", { method: "POST", body: JSON.stringify(payload) }),
 };
