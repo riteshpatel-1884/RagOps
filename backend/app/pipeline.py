@@ -11,10 +11,10 @@ from langchain_core.documents import Document
 
 load_dotenv()  # reads .env (GROQ_API_KEY, QDRANT_URL, QDRANT_API_KEY, etc.) into os.environ
 
-from app.chunking import chunk_documents
-from app.embedder import get_embedder
-from app.vector_store import QdrantStore
-from app.generator import get_generator
+from chunking import chunk_documents
+from embedder import get_embedder
+from vector_store import QdrantStore
+from generator import get_generator
 
 
 @dataclass

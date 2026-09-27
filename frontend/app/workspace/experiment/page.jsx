@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Card from "@/components/Card";
 import { Button, ErrorBanner, Spinner } from "@/components/ui";
 import { LabeledMultiNumberInput, LabeledSelect, parseNumberList } from "@/components/FormControls";
+import CorpusBanner from "@/components/CorpusBanner";
 import { api } from "@/lib/api";
 
 const METRIC_OPTIONS = ["recall", "precision", "mrr", "ndcg", "faithfulness", "relevance", "elapsed_seconds"];
@@ -63,6 +64,8 @@ export default function ExperimentPage() {
           Sweep a grid of chunk sizes, overlaps, and top-K values, score every combination, and rank them.
         </p>
       </div>
+
+      <CorpusBanner variant="warn" />
 
       {error && <ErrorBanner message={error} />}
 
@@ -168,7 +171,7 @@ export default function ExperimentPage() {
             <p className="mt-4 text-xs text-red-500">{response.failed.length} config(s) failed and were excluded.</p>
           )}
           <p className="mt-4 text-xs text-slate-400">
-            Saved as <code>{response.filename}</code> — open it in Diagnose to see bottleneck analysis.
+            Saved as <code>{response.filename}</code> — open it to compare against other sweeps.
           </p>
         </Card>
       )}

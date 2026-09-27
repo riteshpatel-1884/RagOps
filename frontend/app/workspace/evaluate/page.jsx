@@ -5,6 +5,7 @@ import Card from "@/components/Card";
 import MetricStat from "@/components/MetricStat";
 import { Button, ErrorBanner, Spinner } from "@/components/ui";
 import { LabeledInput, LabeledSelect } from "@/components/FormControls";
+import CorpusBanner from "@/components/CorpusBanner";
 import { api } from "@/lib/api";
 
 export default function EvaluatePage() {
@@ -75,6 +76,8 @@ export default function EvaluatePage() {
           Run one pipeline config against your full test dataset and see retrieval or generation metrics.
         </p>
       </div>
+
+      <CorpusBanner variant="warn" />
 
       <div className="flex gap-1 border-b border-slate-200">
         {["retrieval", "generation"].map((t) => (

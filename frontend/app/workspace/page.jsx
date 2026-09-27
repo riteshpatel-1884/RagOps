@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Card from "@/components/Card";
 import { Button, ErrorBanner, Spinner } from "@/components/ui";
+import CorpusBanner from "@/components/CorpusBanner";
 import { api } from "@/lib/api";
 
 export default function UploadPage() {
@@ -99,10 +100,13 @@ export default function UploadPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">1. Upload your knowledge base</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Upload documents in any common format — each becomes one document in the corpus. Uploading replaces the
-          current corpus.
+          The workspace opens with a benchmarked demo corpus and its labeled test set. Upload your own document(s)
+          below only if you want to try the system on different content — that replaces the current corpus, and
+          you can always jump back with "Reset to demo corpus".
         </p>
       </div>
+
+      <CorpusBanner variant="full" onReset={refresh} />
 
       {error && <ErrorBanner message={error} />}
 
@@ -140,8 +144,8 @@ export default function UploadPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">2. Build a test dataset</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Add questions and mark which uploaded document(s) contain the answer. This is what Evaluate,
-          Experiment, and Diagnose all score against.
+          Add questions and mark which uploaded document(s) contain the answer. This is what Evaluate and
+          Experiment score against.
         </p>
       </div>
 

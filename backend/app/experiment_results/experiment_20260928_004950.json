@@ -1,0 +1,36 @@
+[
+  {
+    "config": {
+      "chunk_size": 200,
+      "chunk_overlap": 40,
+      "embedder_name": "bge-small-en-v1.5",
+      "top_k": 3,
+      "collection_name": "rag_chunks",
+      "generator_name": "groq"
+    },
+    "recall": 0.0,
+    "precision": 0.0,
+    "mrr": 0.0,
+    "ndcg": 0.0,
+    "elapsed_seconds": 24.51,
+    "faithfulness": 0.7708269990878686,
+    "relevance": 0.8228217668126593
+  },
+  {
+    "config": {
+      "chunk_size": 200,
+      "chunk_overlap": 80,
+      "embedder_name": "bge-small-en-v1.5",
+      "top_k": 3,
+      "collection_name": "rag_chunks",
+      "generator_name": "groq"
+    },
+    "recall": 0.0,
+    "precision": 0.0,
+    "mrr": 0.0,
+    "ndcg": 0.0,
+    "elapsed_seconds": 22.7,
+    "faithfulness": 0.7721019721019721,
+    "relevance": 0.8233231735376322
+  }
+]

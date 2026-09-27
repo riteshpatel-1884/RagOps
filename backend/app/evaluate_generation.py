@@ -14,8 +14,8 @@ import argparse
 import json
 from pathlib import Path
 
-from app.pipeline import PipelineConfig, RetrievalPipeline
-from app.gen_evaluators import (
+from pipeline import PipelineConfig, RetrievalPipeline
+from gen_evaluators import (
     LexicalOverlapFaithfulness,
     EmbeddingSimilarityRelevance,
     LLMJudgeFaithfulness,

@@ -44,6 +44,7 @@ async function request(path, options) {
 // ExperimentRow:           { config, recall?, precision?, mrr?, ndcg?, elapsed_seconds?, faithfulness?, relevance?, error? }
 // ExperimentResponse:      { results, failed, sort_by, filename }
 // ExperimentListItem:      { filename, modified }
+// CorpusStatus:            { source: "demo"|"custom", doc_count, test_dataset_count, has_seed_demo }
 
 // --- Endpoints ---------------------------------------------------------------
 
@@ -61,6 +62,10 @@ export const api = {
   },
 
   getDocuments: () => request("/api/documents"),
+
+  getCorpusStatus: () => request("/api/corpus/status"),
+
+  resetDemoCorpus: () => request("/api/corpus/reset-demo", { method: "POST" }),
 
   saveTestDataset: (items) =>
     request("/api/test-dataset", { method: "POST", body: JSON.stringify(items) }),

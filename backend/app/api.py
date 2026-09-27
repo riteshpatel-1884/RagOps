@@ -28,15 +28,35 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from app.pipeline import PipelineConfig, RetrievalPipeline
-import app.evaluate as evaluate_mod
-import app.evaluate_generation as evaluate_generation_mod
-import app.experiment as experiment_mod
+from pipeline import PipelineConfig, RetrievalPipeline
+import evaluate as evaluate_mod
+import evaluate_generation as evaluate_generation_mod
+import experiment as experiment_mod
 
 DATA_DIR = Path(__file__).parent / "data"
+SEED_DIR = Path(__file__).parent / "data" / "seed"
 RESULTS_DIR = Path(__file__).parent / "experiment_results"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+CORPUS_SOURCE_PATH = DATA_DIR / "corpus_source.txt"
+
+
+def _set_corpus_source(source: str) -> None:
+    """source is 'demo' (the hardcoded, benchmarked corpus) or 'custom' (a
+    document/test-set uploaded at runtime, e.g. by an interviewer)."""
+    CORPUS_SOURCE_PATH.write_text(source)
+
+
+def _get_corpus_source() -> str:
+    if CORPUS_SOURCE_PATH.exists():
+        return CORPUS_SOURCE_PATH.read_text().strip() or "custom"
+    return "custom"
+
+
+# NOTE: the seed-demo corpus is now built from a real PDF (data/seed/*.pdf) —
+# see _build_documents_from_seed_pdfs() further down, defined once extract_text()
+# exists, and invoked at the bottom of this file once the app is fully defined.
 
 app = FastAPI(title="RAG Evaluation & Optimization Engine API")
 
@@ -246,6 +266,54 @@ def extract_text(filename: str, raw: bytes) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Seed demo corpus — built from a real PDF (e.g. your resume) in data/seed/,
+# not hand-typed JSON. Reuses extract_text() above, the exact same PDF
+# extraction a normal upload goes through, so the demo corpus is produced the
+# same way any uploaded document would be.
+# ---------------------------------------------------------------------------
+
+def _build_documents_from_seed_pdfs() -> Dict[str, str]:
+    """Extract every PDF in data/seed/ into a {doc_id: text} dict. doc_id is
+    the PDF's filename without extension (e.g. resume.pdf -> "resume")."""
+    documents: Dict[str, str] = {}
+    for pdf_path in sorted(SEED_DIR.glob("*.pdf")):
+        raw = pdf_path.read_bytes()
+        documents[pdf_path.stem] = extract_text(pdf_path.name, raw)
+    return documents
+
+
+def _write_seed_corpus() -> Dict[str, str]:
+    """Rebuild data/documents.json from the seed PDF(s) and copy the seed
+    test set into place. Used at startup (if empty) and by 'reset to demo'."""
+    documents = _build_documents_from_seed_pdfs()
+    if not documents:
+        return {}
+
+    with open(DATA_DIR / "documents.json", "w") as out:
+        json.dump(documents, out, indent=2)
+
+    seed_tests = SEED_DIR / "test_dataset.json"
+    if seed_tests.exists():
+        shutil.copy(seed_tests, DATA_DIR / "test_dataset.json")
+
+    _set_corpus_source("demo")
+    return documents
+
+
+def _load_seed_demo() -> None:
+    """Runs once at import time: if data/documents.json doesn't exist yet,
+    build it from the seed PDF(s) so a fresh checkout boots with the
+    benchmarked demo corpus instead of an empty workspace. Silently does
+    nothing if no PDF is bundled — the workspace just starts empty."""
+    if (DATA_DIR / "documents.json").exists():
+        return
+    _write_seed_corpus()
+
+
+_load_seed_demo()
+
+
+# ---------------------------------------------------------------------------
 # Documents
 # ---------------------------------------------------------------------------
 
@@ -270,6 +338,7 @@ async def upload_documents(files: List[UploadFile] = File(...)):
 
     with open(DATA_DIR / "documents.json", "w") as out:
         json.dump(documents, out, indent=2)
+    _set_corpus_source("custom")
 
     return {"count": len(documents), "doc_ids": list(documents.keys())}
 
@@ -281,6 +350,49 @@ def get_documents():
         return {}
     with open(path) as f:
         return json.load(f)
+
+
+# ---------------------------------------------------------------------------
+# Corpus source — which corpus is active (the hardcoded/benchmarked demo
+# corpus, or a document someone uploaded at runtime) and resetting back to
+# the demo. This is what lets an interviewer freely try their own document
+# in Playground, then snap back to the benchmarked corpus for Evaluate /
+# Experiment without restarting the server.
+# ---------------------------------------------------------------------------
+
+@app.get("/api/corpus/status")
+def corpus_status():
+    doc_count = 0
+    docs_path = DATA_DIR / "documents.json"
+    if docs_path.exists():
+        with open(docs_path) as f:
+            doc_count = len(json.load(f))
+
+    test_count = 0
+    test_path = DATA_DIR / "test_dataset.json"
+    if test_path.exists():
+        with open(test_path) as f:
+            test_count = len(json.load(f))
+
+    return {
+        "source": _get_corpus_source(),  # "demo" or "custom"
+        "doc_count": doc_count,
+        "test_dataset_count": test_count,
+        "has_seed_demo": any(SEED_DIR.glob("*.pdf")),
+    }
+
+
+@app.post("/api/corpus/reset-demo")
+def reset_demo_corpus():
+    """Restore the committed demo corpus (re-extracted from the seed PDF) +
+    its labeled test set, discarding whatever was uploaded at runtime. Used
+    by the 'Reset to demo corpus' button so the benchmarked Evaluate/
+    Experiment story is always one click away, even after someone tries
+    their own document."""
+    documents = _write_seed_corpus()
+    if not documents:
+        raise HTTPException(500, "No demo corpus is bundled with this deployment (no PDF in data/seed/).")
+    return {"count": len(documents), "doc_ids": list(documents.keys()), "source": "demo"}
 
 
 # ---------------------------------------------------------------------------
