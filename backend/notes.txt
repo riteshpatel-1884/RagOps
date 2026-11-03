@@ -1,0 +1,11 @@
+LeaderLab
+
+
+Metrices we are going to measure
+
+| Metric            | What it evaluates                                     | Required inputs                |
+| ----------------- | ----------------------------------------------------- | ------------------------------ |
+| Answer Relevancy  | Whether the answer addresses the question             | Question, Actual answer        |
+| Correctness       | Similarity between actual and expected answers        | Expected answer, Actual answer |
+| Faithfulness      | Whether the answer is supported by retrieved context  | Context, Actual answer         |
+| Context Relevancy | Whether retrieved context is relevant to the question | Question, Context              |
