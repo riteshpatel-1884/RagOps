@@ -40,8 +40,7 @@ eval_model = GroqEvalModel()
 test_case = LLMTestCase(
     input="What data processing techniques did Ritesh use during his Data Analyst internship?",
     actual_output=(
-        "Ritesh used car to build data preprocessing "
-        ""
+        "Ritesh used car to build data preprocessing"
     )
 )
 

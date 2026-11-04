@@ -1,5 +1,6 @@
 LeaderLab
 
+To run: python -m app.single_tests.test_single_eval_answer_relevancy 
 
 Metrices we are going to measure
 
