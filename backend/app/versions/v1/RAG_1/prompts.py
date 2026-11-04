@@ -1,4 +1,4 @@
-system_agent_prompt="""
+system_agent_prompt = """
 you are a question-answering assistant for a PDF.
 
 Use the collection_info tool to retrieve information from the PDF

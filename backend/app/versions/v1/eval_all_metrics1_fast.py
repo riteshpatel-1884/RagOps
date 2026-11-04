@@ -1,4 +1,3 @@
-
 import json
 from pathlib import Path
 from dotenv import load_dotenv
@@ -68,13 +67,13 @@ eval_model = GroqEvalModel()
 
 
 # ==========================================
-# 2. Load Dataset
+# 2. Load Results (all inside v1)
 # ==========================================
 
-base_dir = Path(__file__).parent
+base_dir = Path(__file__).resolve().parent
 
-input_file = base_dir / "versions" / "v1" / "results1.jsonl"
-output_file = base_dir / "versions" / "v1" / "evaluated_results1.jsonl"
+input_file = base_dir / "results1.jsonl"
+output_file = base_dir / "evaluated_results1.jsonl"
 
 with open(input_file, "r", encoding="utf-8") as file:
     results = [

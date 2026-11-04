@@ -2,11 +2,11 @@ import json
 import time
 from pathlib import Path
 
-from app.RAG_1.agent import ask
+from app.versions.v1.RAG_1.agent import ask
 
-BASE_DIR = Path(__file__).resolve().parents[3]  # -> backend/
-DATASET = BASE_DIR / "eval_dataset.jsonl"
-OUTPUT = Path(__file__).resolve().parent / "results1.jsonl"  # saved next to this script in v1/
+V1_DIR = Path(__file__).resolve().parent
+DATASET = V1_DIR / "eval_dataset.jsonl"   # v1's own dataset copy
+OUTPUT = V1_DIR / "results1.jsonl"        # v1's own results
 
 with open(DATASET, "r", encoding="utf-8") as f:
     test_cases = [json.loads(line) for line in f if line.strip()]

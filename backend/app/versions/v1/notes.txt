@@ -1,0 +1,4 @@
+python -m app.versions.v1.eval_runner1        
+python -m app.versions.v1.eval_all_metrics1 --start 1 --end 15
+python -m app.versions.v1.evaluation_summary1
+python -m app.versions.v1.save_experiment1

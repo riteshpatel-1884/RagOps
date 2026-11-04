@@ -1,9 +1,8 @@
-
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain.messages import SystemMessage, HumanMessage
 
-from .indexing import vector_store
+from .indexing import vector_store, RETRIEVER_K
 from .objects import Answer
 
 load_dotenv()
@@ -48,10 +47,10 @@ Additional rules:
 
 def ask(question: str) -> dict:
 
-    # 1. Retrieve relevant chunks
+    # 1. Retrieve relevant chunks (k = 3 in v1)
     docs = vector_store.similarity_search(
         question,
-        k=4
+        k=RETRIEVER_K
     )
 
     # 2. Prepare context

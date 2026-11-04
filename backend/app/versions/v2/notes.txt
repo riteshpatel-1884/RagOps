@@ -1,0 +1,11 @@
+Only k = 1 is changed in v2
+
+# 1. Regenerate answers (creates results2.jsonl)
+python -m app.versions.v2.eval_runner2
+
+# 2. Evaluate: Progress is saved after every test. Before, a crash at test 12 lost everything. Now only the test in progress is lost.
+python -m app.versions.v2.eval_all_metrics2 --start 1 --end 15
+
+# 3. Summary and experiment file
+python -m app.versions.v2.evaluation_summary2
+python -m app.versions.v2.save_experiment2
