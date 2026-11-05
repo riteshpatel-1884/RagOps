@@ -1,78 +1,85 @@
-import json
-from pathlib import Path
-from statistics import mean
+# import json
+# from pathlib import Path
+# from statistics import mean
 
-base_dir = Path(__file__).resolve().parent
-input_file = base_dir / "evaluated_results1.jsonl"
+# base_dir = Path(__file__).resolve().parent
+# input_file = base_dir / "evaluated_results1.jsonl"
 
-with open(input_file, "r", encoding="utf-8") as file:
-    results = [
-        json.loads(line)
-        for line in file
-        if line.strip()
-    ]
-
-
-metrics = [
-    "answer_relevancy",
-    "faithfulness",
-    "context_relevancy",
-    "correctness"
-]
-
-threshold = 0.7
-
-print("\n========== RAG Evaluation Summary (v1, k=3) ==========\n")
-
-if not results:
-    print("No evaluation results found.")
-    raise SystemExit
+# with open(input_file, "r", encoding="utf-8") as file:
+#     results = [
+#         json.loads(line)
+#         for line in file
+#         if line.strip()
+#     ]
 
 
-overall_scores = []
+# metrics = [
+#     "answer_relevancy",
+#     "faithfulness",
+#     "context_relevancy",
+#     "correctness"
+# ]
 
-for metric in metrics:
+# threshold = 0.7
 
-    # Ignore missing or None scores
-    scores = [
-        result[metric]
-        for result in results
-        if result.get(metric) is not None
-    ]
+# print("\n========== RAG Evaluation Summary (v1, k=3) ==========\n")
 
-    if not scores:
-        print(metric.replace("_", " ").title())
-        print("No valid scores available.\n")
-        continue
-
-    average_score = mean(scores)
-
-    passed = sum(score >= threshold for score in scores)
-    failed = len(scores) - passed
-
-    pass_rate = (passed / len(scores)) * 100
-
-    overall_scores.extend(scores)
-
-    print(metric.replace("_", " ").title())
-    print(f"Average Score : {average_score:.3f}")
-    print(f"Passed        : {passed}/{len(scores)}")
-    print(f"Failed        : {failed}/{len(scores)}")
-    print(f"Pass Rate     : {pass_rate:.2f}%")
-    print(f"Missing Scores: {len(results) - len(scores)}")
-    print("-" * 45)
+# if not results:
+#     print("No evaluation results found.")
+#     raise SystemExit
 
 
-# Overall evaluation
-if overall_scores:
-    print("\n========== Overall Performance ==========")
+# overall_scores = []
 
-    print(
-        f"Overall Average Score: "
-        f"{mean(overall_scores):.3f}"
-    )
+# for metric in metrics:
 
-    print(f"Total Test Cases: {len(results)}")
-    print(f"Total Valid Scores: {len(overall_scores)}")
+#     # Ignore missing or None scores
+#     scores = [
+#         result[metric]
+#         for result in results
+#         if result.get(metric) is not None
+#     ]
 
-print("\n==========================================")
+#     if not scores:
+#         print(metric.replace("_", " ").title())
+#         print("No valid scores available.\n")
+#         continue
+
+#     average_score = mean(scores)
+
+#     passed = sum(score >= threshold for score in scores)
+#     failed = len(scores) - passed
+
+#     pass_rate = (passed / len(scores)) * 100
+
+#     overall_scores.extend(scores)
+
+#     print(metric.replace("_", " ").title())
+#     print(f"Average Score : {average_score:.3f}")
+#     print(f"Passed        : {passed}/{len(scores)}")
+#     print(f"Failed        : {failed}/{len(scores)}")
+#     print(f"Pass Rate     : {pass_rate:.2f}%")
+#     print(f"Missing Scores: {len(results) - len(scores)}")
+#     print("-" * 45)
+
+
+# # Overall evaluation
+# if overall_scores:
+#     print("\n========== Overall Performance ==========")
+
+#     print(
+#         f"Overall Average Score: "
+#         f"{mean(overall_scores):.3f}"
+#     )
+
+#     print(f"Total Test Cases: {len(results)}")
+#     print(f"Total Valid Scores: {len(overall_scores)}")
+
+# print("\n==========================================")
+
+
+# Print the full report.  python -m app.versions.v1.evaluation_summary1
+from app.versions.toolkit.experiment import summary
+
+if __name__ == "__main__":
+    summary("v1")

@@ -1,0 +1,14 @@
+v3 = same k as v1 (k=3). Only change: chunking.
+PDF text blocks (26) are merged into ~700-char chunks with 1 block overlap
+(see RAG_3/file_reader.py merge_paragraphs, settings in RAG_3/indexing.py).
+
+Run order (from backend/):
+  python -m app.versions.v3.RAG_3.file_reader        # optional: inspect the new chunks
+  python -m app.versions.v3.eval_runner3
+  python -m app.versions.v3.eval_all_metrics3 --start 1 --end 7
+  python -m app.versions.v3.eval_all_metrics3 --start 8 --end 15
+                          or
+  python -m app.versions.v3.eval_all_metrics3 --start 1 --end 15
+  python -m app.versions.v3.evaluation_summary3
+  python -m app.versions.v3.save_experiment3
+  python -m app.versions.compare_experiments v1 v3

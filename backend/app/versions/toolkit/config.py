@@ -1,0 +1,57 @@
+"""Shared settings for every experiment version (v1, v2, v3, ...).
+
+Datasets and results stay inside each version folder; only the metric CODE is shared.
+"""
+from pathlib import Path
+
+# toolkit -> versions -> app -> backend
+VERSIONS_DIR = Path(__file__).resolve().parents[1]
+BACKEND_DIR = Path(__file__).resolve().parents[3]
+PDF_PATH = BACKEND_DIR / "pdfs" / "ritesh_AI.pdf"
+
+# Register a new version here when you add one (v4, ...).
+VERSIONS = {
+    "v1": {"n": 1, "name": "experiment_v1_k3",        "chunking": "raw PDF blocks"},
+    "v2": {"n": 2, "name": "experiment_v2_k1",        "chunking": "raw PDF blocks"},
+    "v3": {"n": 3, "name": "experiment_v3_k3_merged", "chunking": "merged blocks (700 chars, overlap 1)"},
+}
+
+# ---- Judge (LLM-as-a-judge). Keep it FIXED across versions or scores are not comparable.
+JUDGE_MODEL = "openai/gpt-oss-120b"
+JUDGE_THRESHOLD = 0.7
+JUDGE_METRICS = ["answer_relevancy", "faithfulness", "context_relevancy", "correctness", "completeness"]
+DEFAULT_CONTEXT_SOURCE = "raw"   # "raw" = chunks the retriever returned, "llm" = the context text the LLM wrote
+
+# ---- Retrieval evaluation depths (Recall@k / MRR@k / Precision@k are reported at each)
+RETRIEVAL_DEPTHS = (1, 3, 5)
+
+# ---- Cost of the GENERATOR model, USD per 1M tokens.
+# Groq gpt-oss-120b on-demand list price when this was written. Verify at https://groq.com/pricing
+GENERATOR_PRICE_PER_M = {"input": 0.15, "output": 0.60}
+
+# ---- Statistics
+BOOTSTRAP_RESAMPLES = 2000
+BOOTSTRAP_SEED = 42
+
+UNANSWERABLE = "unanswerable"
+
+
+def paths(version: str) -> dict:
+    if version not in VERSIONS:
+        raise SystemExit(f"Unknown version {version!r}. Known: {', '.join(VERSIONS)} (see toolkit/config.py)")
+    n = VERSIONS[version]["n"]
+    d = VERSIONS_DIR / version
+    return {
+        "dir": d,
+        "dataset": d / "eval_dataset.jsonl",
+        "results": d / f"results{n}.jsonl",
+        "evaluated": d / f"evaluated_results{n}.jsonl",
+        "retrieval": d / f"retrieval_results{n}.jsonl",
+        "experiment": d / f"experiment_{version}.json",
+    }
+
+
+def rag_module(version: str, name: str) -> str:
+    """Dotted import path of a module inside the version's RAG package, e.g. agent / indexing."""
+    n = VERSIONS[version]["n"]
+    return f"app.versions.{version}.RAG_{n}.{name}"
