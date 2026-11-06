@@ -9,11 +9,13 @@ import time
 from statistics import median
 
 from .config import RETRIEVAL_DEPTHS, paths, rag_module, UNANSWERABLE
+from .migrate import archive_single_doc
 from .retrieval_metrics import retrieval_record
 from .text_utils import read_jsonl, write_jsonl
 
 
 def main(version: str):
+    archive_single_doc(version)
     p = paths(version)
     cases = [c for c in read_jsonl(p["dataset"]) if c["category"] != UNANSWERABLE and c.get("evidence")]
     if not cases:
@@ -34,21 +36,25 @@ def main(version: str):
             docs = store.similarity_search(c["question"], k=k_max)
             times.append((time.perf_counter() - t0) * 1000)
         chunks = [d.page_content for d in docs]
+        sources = [(d.metadata or {}).get("source") for d in docs]
         rows.append({
-            "id": c["id"], "category": c["category"], "paraphrase_group": c.get("paraphrase_group"),
+            "id": c["id"], "category": c["category"], "source": c.get("source"),
+            "paraphrase_group": c.get("paraphrase_group"),
             "question": c["question"], "retriever_k": k_own, "retrieval_ms": median(times),
-            **retrieval_record(chunks, c["evidence"], depths),
-            "retrieved_chunks": chunks,
+            **retrieval_record(chunks, c["evidence"], depths, sources, c.get("source")),
+            "retrieved_chunks": chunks, "retrieved_sources": sources,
+            "retrieved_pages": [(d.metadata or {}).get("page") for d in docs],
         })
 
     write_jsonl(p["retrieval"], rows)
 
     print(f"\n{version}: retrieval on {len(rows)} answerable questions (own k = {k_own})")
-    print(f"{'k':<4}{'Hit rate':<10}{'Recall':<10}{'Precision':<11}{'MRR':<8}")
+    print(f"{'k':<4}{'Hit rate':<10}{'Recall':<10}{'Precision':<11}{'MRR':<8}{'Right doc':<11}{'All docs reached':<17}")
     for k in depths:
         def avg(m):
-            v = [r["at"][str(k)][m] for r in rows if r["at"][str(k)][m] is not None]
-            return sum(v) / len(v)
+            v = [r["at"][str(k)][m] for r in rows if r["at"][str(k)].get(m) is not None]
+            return sum(v) / len(v) if v else float("nan")
         mark = "  <- this version's k" if k == k_own else ""
-        print(f"{k:<4}{avg('hit'):<10.3f}{avg('fact_recall'):<10.3f}{avg('precision'):<11.3f}{avg('mrr'):<8.3f}{mark}")
+        print(f"{k:<4}{avg('hit'):<10.3f}{avg('fact_recall'):<10.3f}{avg('precision'):<11.3f}{avg('mrr'):<8.3f}"
+              f"{avg('source_hit'):<11.3f}{avg('source_recall'):<17.3f}{mark}")
     print(f"\nSaved: {p['retrieval']}")

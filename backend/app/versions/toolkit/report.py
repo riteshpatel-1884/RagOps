@@ -8,7 +8,7 @@ from .generation_metrics import fact_coverage, is_abstention, ngram_grounding
 from .stats import latency_stats, summarize
 from .text_utils import read_jsonl
 
-RETRIEVAL_KEYS = ("hit", "fact_recall", "precision", "mrr")
+RETRIEVAL_KEYS = ("hit", "fact_recall", "precision", "mrr", "source_hit", "source_recall", "source_precision")
 LEGACY_KEYS = ("answer_relevancy", "faithfulness", "context_relevancy", "correctness")
 
 
@@ -22,13 +22,20 @@ def _consistency(groups):
     return mean(spreads) if spreads else None
 
 
+def _src(x):
+    """Dataset `source` (list of PDF names) as one readable key, e.g. 'ritesh_AI.pdf + NEXORA_TECHNOLOGIES_PVT.pdf'."""
+    if isinstance(x, str):
+        return x
+    return " + ".join(sorted(x)) if x else "unknown"
+
+
 def build_report(version: str) -> dict:
     cfg, p = VERSIONS[version], paths(version)
     dataset = read_jsonl(p["dataset"])
     # rows written by the old (pre-toolkit) scripts have no category/key: ignore them
-    results = [r for r in read_jsonl(p["results"]) if "category" in r]
-    evaluated = [e for e in read_jsonl(p["evaluated"]) if "key" in e]
-    retrieval = [r for r in read_jsonl(p["retrieval"]) if "at" in r]
+    results = [r for r in read_jsonl(p["results"]) if "category" in r and "retrieved_sources" in r]
+    evaluated = [e for e in read_jsonl(p["evaluated"]) if "key" in e and "source" in e]
+    retrieval = [r for r in read_jsonl(p["retrieval"]) if "at" in r and "retrieved_sources" in r]
 
     ok = [r for r in results if r.get("error") is None and r.get("actual_answer") is not None]
     answerable = [r for r in ok if r["category"] != UNANSWERABLE]
@@ -37,6 +44,7 @@ def build_report(version: str) -> dict:
     k = next((r["retriever_k"] for r in ok + retrieval if r.get("retriever_k")), None)
     report = {
         "experiment": cfg["name"], "version": version, "retriever_k": k, "chunking": cfg["chunking"],
+        "corpus": {"vector_db": "Qdrant", "documents": sorted({d for r in dataset for d in (r.get("source") or [])})},
         "judge_model": next((e.get("judge_model") for e in evaluated if e.get("judge_model")), JUDGE_MODEL),
         "context_source": next((e.get("context_source") for e in evaluated if e.get("context_source")), None),
         "dataset": {
@@ -52,7 +60,7 @@ def build_report(version: str) -> dict:
     if retrieval:
         depths = sorted({int(d) for r in retrieval for d in r["at"]})
         def agg(depth):
-            return {m: summarize([r["at"][str(depth)][m] for r in retrieval]) for m in RETRIEVAL_KEYS}
+            return {m: summarize([r["at"][str(depth)].get(m) for r in retrieval]) for m in RETRIEVAL_KEYS}
         report["retrieval"] = {
             "at_k": agg(k) if k else None,
             "curve": {str(d): {m: (v["mean"] if v else None) for m, v in agg(d).items()} for d in depths},
@@ -131,8 +139,26 @@ def build_report(version: str) -> dict:
             if k:
                 hit = [ret_by_id[i]["at"][str(k)]["hit"] for i in ids if i in ret_by_id]
                 d["hit"] = mean(hit) if hit else None
+                sh = [ret_by_id[i]["at"][str(k)].get("source_recall") for i in ids if i in ret_by_id]
+                sh = [x for x in sh if x is not None]
+                d["right_doc"] = mean(sh) if sh else None
         by_cat[c] = d
     report["by_category"] = by_cat
+
+    # ---------------- by source document (which file the question is about) ----------------
+    src_of = {r["id"]: _src(r.get("source")) for r in dataset}
+    by_src = {}
+    for sname in sorted(set(src_of.values())):
+        ids_all = [r["id"] for r in ok if src_of.get(r["id"]) == sname]
+        ids = [r["id"] for r in ok if src_of.get(r["id"]) == sname and r["category"] != UNANSWERABLE]
+        cov = [x["coverage"] for x in ans if x["id"] in ids and x["coverage"] is not None]
+        cor = [ev_by_id[i]["correctness"] for i in ids if i in ev_by_id and ev_by_id[i].get("correctness") is not None]
+        hit = [ret_by_id[i]["at"][str(k)]["hit"] for i in ids if i in ret_by_id and k]
+        una_s = [float(x["abstained"]) for x in una if x["id"] in ids_all]
+        by_src[sname] = {"n": len(ids_all), "hit": mean(hit) if hit else None,
+                         "fact_coverage": mean(cov) if cov else None, "correctness": mean(cor) if cor else None,
+                         "abstention_accuracy": mean(una_s) if una_s else None}
+    report["by_source"] = by_src
     return report
 
 
@@ -149,6 +175,7 @@ def print_report(rep: dict) -> None:
     print(f"\n==================== {rep['experiment']} ====================")
     print(f"k = {rep['retriever_k']} | chunking: {rep['chunking']} | judge: {rep['judge_model']} "
           f"| judge context: {rep['context_source']}")
+    print(f"corpus: {', '.join(rep['corpus']['documents'])} | vector DB: {rep['corpus']['vector_db']}")
     print(f"questions: {d['questions_in_dataset']} ({d['by_category']}) | answers generated: {d['answers_generated']} "
           f"| errors: {d['generation_errors']} | judged: {d['judged']}")
 
@@ -162,8 +189,11 @@ def print_report(rep: dict) -> None:
     print("\n--- Retrieval (judge-free) ---")
     r = rep["retrieval"]
     if r and r["at_k"]:
-        for m, label in (("hit", "Hit rate"), ("fact_recall", "Recall"), ("precision", "Precision"), ("mrr", "MRR")):
-            print(f"{label + '@' + str(rep['retriever_k']):<20}{_ci(r['at_k'][m])}")
+        for m, label in (("hit", "Hit rate"), ("fact_recall", "Recall"), ("precision", "Precision"), ("mrr", "MRR"),
+                         ("source_hit", "Right-doc hit"), ("source_recall", "All-docs reached"),
+                         ("source_precision", "Right-doc precision")):
+            if r["at_k"].get(m):
+                print(f"{label + '@' + str(rep['retriever_k']):<22}{_ci(r['at_k'][m])}")
         print("curve (k: hit / recall / precision / mrr): " + " | ".join(
             f"{kk}: {_f(v['hit'], 2)}/{_f(v['fact_recall'], 2)}/{_f(v['precision'], 2)}/{_f(v['mrr'], 2)}"
             for kk, v in r["curve"].items()))
@@ -200,5 +230,9 @@ def print_report(rep: dict) -> None:
     print("\n--- By category ---")
     for c, v in rep["by_category"].items():
         parts = [f"n={v['n']}"] + [f"{k} {_f(x, 2)}" for k, x in v.items() if k != "n"]
-        print(f"{c:<14}" + " | ".join(parts))
+        print(f"{c:<16}" + " | ".join(parts))
+    print("\n--- By source document ---")
+    for sname, v in rep.get("by_source", {}).items():
+        parts = [f"n={v['n']}"] + [f"{k} {_f(x, 2)}" for k, x in v.items() if k != "n" and x is not None]
+        print(f"{sname:<48}" + " | ".join(parts))
     print()

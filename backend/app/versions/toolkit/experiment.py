@@ -1,8 +1,8 @@
 """summary + save_experiment for any version."""
 import json
-import shutil
 
 from .config import paths
+from .migrate import archive_single_doc
 from .report import build_report, print_report
 
 
@@ -14,19 +14,9 @@ def summary(version: str):
 
 
 def save(version: str):
+    archive_single_doc(version)           # keeps the old single-resume experiment file as *.single_doc.json
     p = paths(version)
     rep = build_report(version)
-
-    if p["experiment"].exists():          # keep the old experiment file (older runs had a different format/PDF)
-        try:
-            old = json.loads(p["experiment"].read_text(encoding="utf-8"))
-        except Exception:
-            old = {}
-        if "retrieval" not in old:
-            legacy = p["experiment"].with_name(p["experiment"].stem + ".legacy.json")
-            if not legacy.exists():
-                shutil.copy(p["experiment"], legacy)
-                print(f"Old experiment file backed up to {legacy.name}")
 
     with open(p["experiment"], "w", encoding="utf-8") as f:
         json.dump(rep, f, indent=2, ensure_ascii=False)

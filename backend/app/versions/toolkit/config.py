@@ -2,18 +2,34 @@
 
 Datasets and results stay inside each version folder; only the metric CODE is shared.
 """
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # toolkit -> versions -> app -> backend
 VERSIONS_DIR = Path(__file__).resolve().parents[1]
 BACKEND_DIR = Path(__file__).resolve().parents[3]
-PDF_PATH = BACKEND_DIR / "pdfs" / "ritesh_AI.pdf"
+
+# ---- Corpus: EVERY *.pdf in this folder is indexed (resume + NEXORA handbook, ...).
+PDF_DIR = BACKEND_DIR / "pdfs"
+MAX_QUESTIONS = 60   # size limit of the evaluation dataset
+
+# ---- Vector database (Qdrant). Start the server once:
+#   docker run -d -p 6333:6333 -v qdrant_storage:/qdrant/storage --name qdrant qdrant/qdrant
+# Override in backend/.env:  QDRANT_URL=http://localhost:6333   (or ":memory:" for a throw-away in-process DB)
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY") or None
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+EMBEDDING_DIM = 384
 
 # Register a new version here when you add one (v4, ...).
 VERSIONS = {
-    "v1": {"n": 1, "name": "experiment_v1_k3",        "chunking": "raw PDF blocks"},
-    "v2": {"n": 2, "name": "experiment_v2_k1",        "chunking": "raw PDF blocks"},
-    "v3": {"n": 3, "name": "experiment_v3_k3_merged", "chunking": "merged blocks (700 chars, overlap 1)"},
+    "v1": {"n": 1, "name": "experiment_v1_k3",        "chunking": "raw PDF blocks",                      "collection": "ragops_v1"},
+    "v2": {"n": 2, "name": "experiment_v2_k1",        "chunking": "raw PDF blocks",                      "collection": "ragops_v2"},
+    "v3": {"n": 3, "name": "experiment_v3_k3_merged", "chunking": "merged blocks (700 chars, overlap 1)", "collection": "ragops_v3"},
 }
 
 # ---- Judge (LLM-as-a-judge). Keep it FIXED across versions or scores are not comparable.

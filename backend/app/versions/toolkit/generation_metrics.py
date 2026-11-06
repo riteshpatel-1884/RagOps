@@ -1,4 +1,6 @@
 """Judge-free generation metrics: key-fact coverage, abstention, grounding."""
+import re
+
 from .text_utils import normalize, tokens
 
 # Phrases that signal "I could not find this in the context" (checked on normalized text).
@@ -9,6 +11,7 @@ ABSTAIN_PHRASES = [
     "not specified", "not stated", "not listed", "no information", "no details", "no mention", "cannot find",
     "can't find", "couldn't find", "unable to find", "not in the document", "not in the retrieved",
     "insufficient information", "not enough information",
+    "does not indicate", "doesn't indicate", "no indication", "not indicated", "does not say", "doesn't say",
 ]
 
 
@@ -29,6 +32,7 @@ def fact_coverage(answer, gold_facts):
 def ngram_grounding(context, chunks, n=3):
     """Share of the LLM-written `context` word n-grams that really occur in the retrieved chunks.
     Low values mean the model invented or heavily rewrote its 'supporting context'."""
+    context = re.sub(r"\[source:[^\]]*\]", " ", context or "", flags=re.I)   # drop the "[Source: file, page n]" labels
     ctx = tokens(context)
     if not ctx:
         return None

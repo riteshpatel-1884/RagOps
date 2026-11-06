@@ -1,26 +1,17 @@
-from pathlib import Path
-from dotenv import load_dotenv
-from .file_reader import extract_paragraphs, merge_paragraphs
-from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_huggingface import HuggingFaceEmbeddings
+"""v3: merged blocks, k = 3 (the ONLY change vs v1 is chunking).
 
-load_dotenv()
+The ONLY things that differ between v1, v2 and v3 are RETRIEVER_K and the chunking below.
+Everything else (PDFs, embeddings, Qdrant, prompt, LLM) is shared through app/versions/toolkit.
+"""
+from app.versions.toolkit.corpus import load_blocks, merge_blocks, describe
+from app.versions.toolkit.vectorstore import build_vector_store
 
-# v3: same k as v1. The ONLY change vs v1 is chunking (merged blocks).
 RETRIEVER_K = 3
 MAX_CHARS = 700   # target max size of a merged chunk
-OVERLAP = 1       # number of trailing blocks repeated in the next chunk
+OVERLAP = 1       # trailing blocks repeated in the next chunk
 
-# RAG_3 -> v3 -> versions -> app -> backend
-PDF_PATH = Path(__file__).resolve().parents[4] / "pdfs" / "ritesh_AI.pdf"
+blocks = load_blocks()                      # every PDF in backend/pdfs/, with source + page
+chunks = merge_blocks(blocks, max_chars=MAX_CHARS, overlap=OVERLAP)
+vector_store = build_vector_store("ragops_v3", chunks)
 
-embedding = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
-vector_store = InMemoryVectorStore(embedding)
-
-paragraphs = extract_paragraphs(str(PDF_PATH))
-chunks = merge_paragraphs(paragraphs, max_chars=MAX_CHARS, overlap=OVERLAP)
-vector_store.add_texts(texts=chunks)
-print(
-    f"indexed {len(chunks)} merged chunks from {len(paragraphs)} blocks "
-    f"(retriever k = {RETRIEVER_K}, max_chars = {MAX_CHARS}, overlap = {OVERLAP})"
-)
+print(f"v3: {len(chunks)} chunks ({describe(chunks)}) | retriever k = {RETRIEVER_K}")

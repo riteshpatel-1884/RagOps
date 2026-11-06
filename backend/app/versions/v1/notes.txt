@@ -1,32 +1,7 @@
-python -m app.versions.v1.eval_runner1        
-python -m app.versions.v1.eval_all_metrics1 --start 1 --end 15
-python -m app.versions.v1.evaluation_summary1
-python -m app.versions.v1.save_experiment1
-
-
-
 python -m app.versions.toolkit.validate_dataset
-python -m app.versions.v1.retrieval_eval1        # free, instant 
-python -m app.versions.v3.eval_runner3
-python -m app.versions.v1.eval_all_metrics1      # re-run until it says "All done"
+python -m app.versions.v1.retrieval_eval1
+python -m app.versions.v1.eval_runner1
+python -m app.versions.v1.eval_all_metrics1
 python -m app.versions.v1.save_experiment1
-python -m app.versions.v1.evaluation_summary1
-python -m app.versions.compare_experiments
 
 
-
-{"question": "What is Ritesh Patel's educational qualification, university, and CGPA?", "expected_answer": "Ritesh Patel is pursuing a B.Tech in Computer Science from KIET Deemed to be University, Ghaziabad. His CGPA is 7.48."}
-{"question": "Where did Ritesh Patel complete his data analyst internship, and what were its responsibilities?", "expected_answer": "Ritesh completed a Data Analyst internship at Airkrit India from May to August 2026. His responsibilities included building scalable data preprocessing and analysis pipelines using Python, Pandas, and NumPy on 10K+ records, applying data cleaning, feature engineering, and anomaly detection. He also created 15+ data visualizations and automated LLM-based report generation."}
-{"question": "What is RAGOps, and what are its main capabilities?", "expected_answer": "RAGOps is a Production RAG Evaluation and Optimization Platform. It provides a configurable RAG pipeline builder supporting 4 chunking strategies, 2 embedding models, and 3 retrieval modes. It enables comparison of pipeline configurations and includes multi-index ingestion and trace-level observability."}
-{"question": "How does Ritesh's multi-index ingestion architecture improve RAGOps performance?", "expected_answer": "The multi-index ingestion architecture parallelizes document embedding generation across registered models. It reduces document processing time by approximately 20% and allows users to switch retrieval pipelines without re-processing documents."}
-{"question": "Which evaluation metrics and observability features were implemented in RAGOps?", "expected_answer": "RAGOps implements trace-level observability across retrieval, reranking, and generation. It tracks Recall@K, MRR, nDCG, faithfulness, retrieval latency, token usage, and cost."}
-{"question": "What is DataPilot, and what problem does it solve?", "expected_answer": "DataPilot is an ambiguity-aware Text-to-SQL system that uses RAG, LLMs, embeddings, and vector search over PostgreSQL. It converts natural-language questions into SQL queries while detecting ambiguous user requests and supporting clarification workflows."}
-{"question": "What SQL execution accuracy did DataPilot achieve, and how was it evaluated?", "expected_answer": "DataPilot achieved 87% SQL execution accuracy on a test set of 100+ queries."}
-{"question": "How does DataPilot handle ambiguous natural-language queries?", "expected_answer": "DataPilot uses an ambiguity detection layer with 91% classification accuracy. It identifies unclear or ambiguous questions and supports multi-turn clarification workflows before generating SQL. It also uses schema-aware retrieval across 20+ tables and 100+ columns."}
-{"question": "What safety mechanisms prevent DataPilot from executing destructive SQL queries?", "expected_answer": "DataPilot implements SELECT-only SQL guardrails to prevent destructive query execution. This restricts generated queries to read-only SELECT operations."}
-{"question": "What is LeaderLab, and how does its autonomous job search agent work?", "expected_answer": "LeaderLab is an autonomous job search agent built using Next.js, LangGraph, PostgreSQL, and LangChain. It uses an agentic architecture with natural-language processing and LLMs to discover and filter job opportunities. It also uses LangChain tool calling for dynamic tool selection."}
-{"question": "How does LeaderLab use resume-aware retrieval and LLMs for job matching?", "expected_answer": "LeaderLab uses resume-aware retrieval and LLM-based matching to extract candidate skills, generate relevance scores, and identify appropriate job opportunities. This improves matching relevance and accuracy by approximately 15%."}
-{"question": "What is the role of agent state and conversational memory in LeaderLab?", "expected_answer": "LeaderLab uses agent state and conversational memory to retain user preferences and context across multi-step workflows. This reduces redundant search inputs by approximately 25%."}
-{"question": "Which programming languages, frameworks, and AI technologies does Ritesh Patel list in his technical skills?", "expected_answer": "Ritesh lists Python, Java, JavaScript, SQL, Object-Oriented Programming, Data Structures and Algorithms, LangChain, LangGraph, FastAPI, REST APIs, Next.js, React, Generative AI, LLMs, RAG, embeddings, vector search, AI agents, model evaluation, PyTorch, and Hugging Face."}
-{"question": "Which cloud platforms, databases, and DevOps tools does Ritesh have listed in his resume?", "expected_answer": "Ritesh lists AWS as his cloud platform, PostgreSQL and SQL for databases, and Docker, Git, GitHub, and CI/CD among his DevOps tools."}
-{"question": "Which professional certifications has Ritesh Patel completed, and when were they obtained?", "expected_answer": "Ritesh lists the AWS Certified Machine Learning Engineer – Associate (MLA-C01), obtained in May 2026, and the Oracle Cloud Infrastructure 2025 Certified Generative AI Professional, obtained in September 2025."}

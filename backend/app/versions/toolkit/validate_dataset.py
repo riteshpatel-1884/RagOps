@@ -1,41 +1,34 @@
-"""Check the evaluation dataset against the PDF and across versions.
+"""Check the evaluation dataset against the PDFs and across versions.
 
 Usage (from backend/):
     python -m app.versions.toolkit.validate_dataset
 
-Catches: evidence/gold facts that are not in the PDF (e.g. after you edit your resume),
-evidence spanning two PDF blocks (would be unfair to v1/v2), duplicate ids, and
+Catches: evidence/gold facts that are not in the PDFs, evidence spanning two PDF blocks (unfair to v1/v2),
+questions whose `source` file is missing, duplicate ids, more than MAX_QUESTIONS questions, and
 datasets that differ between version folders (versions must use the SAME questions).
 """
 import hashlib
-import re
 import sys
 
-from .config import PDF_PATH, UNANSWERABLE, VERSIONS, paths
+from .config import MAX_QUESTIONS, PDF_DIR, UNANSWERABLE, VERSIONS, paths
+from .corpus import extract_blocks, pdf_files
 from .text_utils import normalize, read_jsonl
 
-CATEGORIES = {"single_fact", "multi_part", "multi_hop", UNANSWERABLE}
+CATEGORIES = {"single_fact", "multi_part", "multi_hop", "cross_document", UNANSWERABLE}
+DERIVED = {"multi_hop", "cross_document"}      # gold facts may be computed, not literally in the text
 
 
-def pdf_blocks(pdf_path):
-    import pymupdf
-    doc = pymupdf.open(pdf_path)
-    blocks = []
-    for page in doc:
-        bl = sorted([b for b in page.get_text("blocks") if b[6] == 0], key=lambda b: (b[1], b[0]))
-        for b in bl:
-            t = re.sub(r"\s*\n\s*", " ", b[4]).strip()
-            if t:
-                blocks.append(t)
-    doc.close()
-    return blocks
+def load_docs():
+    """{pdf file name: [normalized block texts]}"""
+    return {f.name: [normalize(b["text"]) for b in extract_blocks(f)] for f in pdf_files(PDF_DIR)}
 
 
-def validate(rows, blocks):
+def validate(rows, docs):
     errors, warnings = [], []
-    norm_blocks = [normalize(b) for b in blocks]
-    full = " ".join(norm_blocks)
     seen = set()
+
+    if len(rows) > MAX_QUESTIONS:
+        errors.append(f"dataset has {len(rows)} questions, limit is {MAX_QUESTIONS}")
 
     for r in rows:
         rid = r.get("id", "?")
@@ -43,10 +36,24 @@ def validate(rows, blocks):
             errors.append(f"{rid}: duplicate id")
         seen.add(rid)
 
-        if r.get("category") not in CATEGORIES:
-            errors.append(f"{rid}: bad category {r.get('category')!r}")
+        cat = r.get("category")
+        if cat not in CATEGORIES:
+            errors.append(f"{rid}: bad category {cat!r}")
 
-        if r.get("category") == UNANSWERABLE:
+        sources = r.get("source")
+        if not isinstance(sources, list) or not sources:
+            errors.append(f"{rid}: `source` must be a non-empty list of PDF file names")
+            continue
+        missing = [s for s in sources if s not in docs]
+        if missing:
+            errors.append(f"{rid}: source file(s) not found in {PDF_DIR}: {missing}")
+            continue
+        if cat == "cross_document" and len(sources) < 2:
+            errors.append(f"{rid}: cross_document question needs at least 2 sources")
+        if cat in ("single_fact", "multi_part") and len(sources) != 1:
+            errors.append(f"{rid}: {cat} question should have exactly 1 source (use cross_document otherwise)")
+
+        if cat == UNANSWERABLE:
             if r.get("evidence") or r.get("gold_facts"):
                 errors.append(f"{rid}: unanswerable question must have no evidence/gold_facts")
             continue
@@ -56,16 +63,28 @@ def validate(rows, blocks):
         if not r.get("gold_facts"):
             errors.append(f"{rid}: missing gold_facts")
 
+        allowed = {s: docs[s] for s in sources}
+        full = " ".join(" ".join(b) for b in allowed.values())
+        covered = set()
         for ev in r.get("evidence", []):
             e = normalize(ev)
-            if not any(e in b for b in norm_blocks):
-                where = "spans two PDF blocks" if e in full else "NOT FOUND in the PDF"
+            home = [s for s, blocks in allowed.items() if any(e in b for b in blocks)]
+            if home:
+                covered.update(home)
+                continue
+            elsewhere = [s for s, blocks in docs.items() if s not in allowed and any(e in b for b in blocks)]
+            if elsewhere:
+                errors.append(f"{rid}: evidence is in {elsewhere}, which is not listed in `source`: {ev!r}")
+            else:
+                where = "spans two PDF blocks" if e in full else "NOT FOUND in the PDFs"
                 errors.append(f"{rid}: evidence {where}: {ev!r}")
+        if cat == "cross_document" and covered != set(sources):
+            errors.append(f"{rid}: cross_document evidence only covers {sorted(covered)}, needs every source {sources}")
 
         for alts in r.get("gold_facts", []):
             if not any(normalize(a) in full for a in alts):
-                (warnings if r.get("category") == "multi_hop" else errors).append(
-                    f"{rid}: gold fact not in PDF text (typo or derived fact?): {alts}")
+                (warnings if cat in DERIVED else errors).append(
+                    f"{rid}: gold fact not in the source text (typo or derived fact?): {alts}")
 
     groups = {}
     for r in rows:
@@ -78,25 +97,25 @@ def validate(rows, blocks):
 
 
 def main():
-    if not PDF_PATH.exists():
-        raise SystemExit(f"PDF not found: {PDF_PATH}")
-    blocks = pdf_blocks(PDF_PATH)
-    print(f"PDF: {PDF_PATH.name} ({len(blocks)} text blocks)")
+    docs = load_docs()
+    print("PDFs: " + ", ".join(f"{n} ({len(b)} blocks)" for n, b in docs.items()))
 
-    digests = {}
-    bad = False
+    digests, bad = {}, False
     for v in VERSIONS:
         p = paths(v)["dataset"]
         if not p.exists():
             print(f"[{v}] no dataset at {p}")
+            bad = True
             continue
         rows = read_jsonl(p)
         digests[v] = hashlib.sha1(p.read_bytes()).hexdigest()[:10]
-        errors, warnings = validate(rows, blocks)
-        cats = {}
+        errors, warnings = validate(rows, docs)
+        cats, per_doc = {}, {}
         for r in rows:
             cats[r["category"]] = cats.get(r["category"], 0) + 1
-        print(f"[{v}] {len(rows)} questions {cats} | {len(errors)} errors, {len(warnings)} warnings")
+            key = " + ".join(r.get("source") or ["?"])
+            per_doc[key] = per_doc.get(key, 0) + 1
+        print(f"[{v}] {len(rows)} questions {cats}\n     by source {per_doc} | {len(errors)} errors, {len(warnings)} warnings")
         for m in errors:
             print("   ERROR  ", m)
         for m in warnings:

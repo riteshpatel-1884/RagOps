@@ -1,104 +1,3 @@
-# # Usage (from backend/):
-# #   python -m app.versions.compare_experiments                # all versions found, baseline = v1
-# #   python -m app.versions.compare_experiments v1 v3          # only these versions
-# #   python -m app.versions.compare_experiments v1 v2 v3       # first one is the baseline
-# import json
-# import re
-# import sys
-# from pathlib import Path
-# from statistics import mean
-
-# versions_dir = Path(__file__).resolve().parent
-
-# METRICS = ["answer_relevancy", "faithfulness", "context_relevancy", "correctness"]
-
-
-# def load(version: str) -> dict:
-#     path = versions_dir / version / f"experiment_{version}.json"
-#     if not path.exists():
-#         raise SystemExit(f"Missing {path}. Run save_experiment for {version} first.")
-#     with open(path, "r", encoding="utf-8") as file:
-#         return json.load(file)
-
-
-# # Pick versions: from arguments, else auto-discover every vN folder with an experiment file
-# if len(sys.argv) > 1:
-#     versions = sys.argv[1:]
-# else:
-#     versions = sorted(
-#         (p.name for p in versions_dir.iterdir()
-#          if p.is_dir() and re.fullmatch(r"v\d+", p.name)
-#          and (p / f"experiment_{p.name}.json").exists()),
-#         key=lambda v: int(v[1:]),
-#     )
-
-# if len(versions) < 2:
-#     raise SystemExit("Need at least 2 versions with experiment files to compare.")
-
-# experiments = {v: load(v) for v in versions}
-# baseline_ver = versions[0]
-
-
-# def score(v, metric):
-#     return experiments[v]["metrics"].get(metric)
-
-
-# def fmt(x):
-#     return f"{x:.3f}" if x is not None else "n/a"
-
-
-# def overall(v):
-#     vals = [score(v, m) for m in METRICS if score(v, m) is not None]
-#     return mean(vals) if vals else None
-
-
-# col = 13
-
-# # ---------- Table 1: scores ----------
-# print("\n========== EXPERIMENT COMPARISON ==========\n")
-# print(f"{'Metric':<20}" + "".join(f"{v:<{col}}" for v in versions))
-# print(f"{'(retriever k)':<20}" + "".join(f"{'k=' + str(experiments[v]['retriever_k']):<{col}}" for v in versions))
-# print(f"{'(experiment)':<20}" + "".join(f"{experiments[v]['experiment'][:col - 1]:<{col}}" for v in versions))
-# print("-" * (20 + col * len(versions)))
-
-# for metric in METRICS:
-#     print(
-#         f"{metric.replace('_', ' ').title():<20}"
-#         + "".join(f"{fmt(score(v, metric)):<{col}}" for v in versions)
-#     )
-
-# print("-" * (20 + col * len(versions)))
-# print(f"{'Overall average':<20}" + "".join(f"{fmt(overall(v)):<{col}}" for v in versions))
-
-# # ---------- Table 2: change vs baseline ----------
-# print(f"\n---------- Change vs baseline ({baseline_ver}) ----------\n")
-# others = versions[1:]
-# print(f"{'Metric':<20}" + "".join(f"{v:<{col}}" for v in others))
-# print("-" * (20 + col * len(others)))
-
-
-# def delta(v, metric):
-#     a, b = score(baseline_ver, metric), score(v, metric)
-#     return f"{b - a:+.3f}" if a is not None and b is not None else "n/a"
-
-
-# for metric in METRICS:
-#     print(
-#         f"{metric.replace('_', ' ').title():<20}"
-#         + "".join(f"{delta(v, metric):<{col}}" for v in others)
-#     )
-
-# # ---------- Best version per metric ----------
-# print("\n---------- Best version per metric ----------\n")
-# for metric in METRICS:
-#     scored = {v: score(v, metric) for v in versions if score(v, metric) is not None}
-#     if scored:
-#         best = max(scored, key=scored.get)
-#         print(f"{metric.replace('_', ' ').title():<20}{best} ({scored[best]:.3f})")
-
-# print()
-
-
 # Compare experiments side by side.
 # Usage (from backend/):
 #   python -m app.versions.compare_experiments              # every version with an experiment file, baseline = first
@@ -190,6 +89,8 @@ def table(title, rows):
 print("\n=============== EXPERIMENT COMPARISON ===============")
 print(f"{'':<34}" + "".join(f"{v:<{W}}" for v in versions))
 print(f"{'retriever k':<34}" + "".join(f"{'k=' + str(exps[v].get('retriever_k')):<{W}}" for v in versions))
+print(f"{'vector DB':<34}" + "".join(f"{str(dig(exps[v], 'corpus.vector_db') or 'n/a'):<{W}}" for v in versions))
+print(f"{'documents':<34}" + "".join(f"{str(len(dig(exps[v], 'corpus.documents') or [])) or 'n/a':<{W}}" for v in versions))
 print(f"{'chunking':<34}" + "".join(f"{str(exps[v].get('chunking', 'n/a'))[:W - 2]:<{W}}" for v in versions))
 print(f"{'questions judged':<34}" + "".join(f"{str(dig(exps[v], 'dataset.judged') or exps[v].get('number_of_test_cases', 'n/a')):<{W}}" for v in versions))
 
@@ -206,6 +107,9 @@ table("Retrieval at each version's own k", [
     ("Recall", lambda e: dig(e, "retrieval.at_k.fact_recall"), "ci"),
     ("Precision", lambda e: dig(e, "retrieval.at_k.precision"), "ci"),
     ("MRR", lambda e: dig(e, "retrieval.at_k.mrr"), "ci"),
+    ("Right-document hit", lambda e: dig(e, "retrieval.at_k.source_hit"), "ci"),
+    ("All needed docs reached", lambda e: dig(e, "retrieval.at_k.source_recall"), "ci"),
+    ("Right-document precision", lambda e: dig(e, "retrieval.at_k.source_precision"), "ci"),
 ])
 
 table("Retrieval curve at fixed depths (hit / recall)", [
@@ -240,6 +144,20 @@ if cats:
         (c, (lambda cc: lambda e: dig(e, f"by_category.{cc}.correctness"))(c), "score")
         for c in cats if c != "unanswerable"])
 
+cats_hit = sorted({c for e in exps.values() for c in (e.get("by_category") or {})})
+table("Retrieval hit rate by category (own k)", [
+    (c, (lambda cc: lambda e: dig(e, f"by_category.{cc}.hit"))(c), "score")
+    for c in cats_hit if c != "unanswerable"])
+
+srcs = sorted({s_ for e in exps.values() for s_ in (e.get("by_source") or {})})
+if srcs:
+    table("Correctness by source document", [
+        (s_[:32], (lambda ss: lambda e: ((e.get("by_source") or {}).get(ss) or {}).get("correctness"))(s_), "score")
+        for s_ in srcs])
+    table("Retrieval hit rate by source document", [
+        (s_[:32], (lambda ss: lambda e: ((e.get("by_source") or {}).get(ss) or {}).get("hit"))(s_), "score")
+        for s_ in srcs])
+
 # change vs baseline on the headline numbers (means only)
 print(f"\n---------- Change vs baseline ({baseline}) ----------")
 others = versions[1:]
@@ -251,6 +169,7 @@ headline = [
     ("Context relevancy", lambda e: mean_of(judge_value(e, "context_relevancy"))),
     ("Retrieval hit rate", lambda e: mean_of(dig(e, "retrieval.at_k.hit"))),
     ("Retrieval MRR", lambda e: mean_of(dig(e, "retrieval.at_k.mrr"))),
+    ("Right-document hit", lambda e: mean_of(dig(e, "retrieval.at_k.source_hit"))),
     ("Key-fact coverage", lambda e: mean_of(dig(e, "generation.fact_coverage"))),
     ("Hallucination rate", lambda e: mean_of(dig(e, "generation.hallucination_rate"))),
 ]

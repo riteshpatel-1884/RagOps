@@ -23,6 +23,7 @@ from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 from langchain_groq import ChatGroq
 
 from .config import (DEFAULT_CONTEXT_SOURCE, JUDGE_METRICS, JUDGE_MODEL, JUDGE_THRESHOLD, UNANSWERABLE, paths)
+from .migrate import archive_single_doc
 from .retry import with_retry
 from .text_utils import read_jsonl, write_jsonl
 
@@ -108,6 +109,7 @@ def main(version: str):
     if bad:
         raise SystemExit(f"Unknown metrics {bad}. Choose from {JUDGE_METRICS}")
 
+    archive_single_doc(version)
     p = paths(version)
     results = read_jsonl(p["results"])
     if not results:
@@ -141,14 +143,15 @@ def main(version: str):
     for i in range(args.start, end + 1):
         r = results[i - 1]
         if r.get("category") == UNANSWERABLE:
-            continue                                  # scored by abstention, not by the judge
+            print(f"\n[{i}/{len(results)}] {r['id']}: unanswerable, scored by the abstention check (no judge needed)")
+            continue
         if r.get("error") or not r.get("actual_answer"):
             print(f"\n[{i}] {r['id']}: no answer (error), skipping")
             continue
 
         key = row_key(r, source)
         row = evaluated.get(key) or {
-            "key": key, "id": r["id"], "category": r["category"], "question": r["question"],
+            "key": key, "id": r["id"], "category": r["category"], "source": r.get("source"), "question": r["question"],
             "expected_answer": r["expected_answer"], "actual_answer": r["actual_answer"],
             "context_source": source, "judge_model": args.judge_model,
         }

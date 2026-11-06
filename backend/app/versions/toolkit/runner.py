@@ -6,14 +6,14 @@ Saved after EVERY question, so an interrupted run never leaves an empty file.
 import argparse
 import importlib
 import json
-import shutil
 import time
 
 from .config import VERSIONS, paths, rag_module
+from .migrate import archive_single_doc
 from .retry import with_retry
 from .text_utils import read_jsonl, write_jsonl
 
-DATASET_FIELDS = ("category", "paraphrase_group", "expected_answer", "gold_facts", "evidence")
+DATASET_FIELDS = ("category", "source", "paraphrase_group", "expected_answer", "gold_facts", "evidence")
 
 
 def _is_complete(row, case):
@@ -22,7 +22,7 @@ def _is_complete(row, case):
         and row.get("question") == case["question"]
         and row.get("error") is None
         and row.get("actual_answer") is not None
-        and "retrieved_chunks" in row            # rows from the old runner lack this -> regenerate
+        and "retrieved_sources" in row           # rows from the old single-document runner lack this
     )
 
 
@@ -32,6 +32,7 @@ def main(version: str):
     parser.add_argument("--sleep", type=float, default=2.0, help="seconds between questions")
     args = parser.parse_args()
 
+    archive_single_doc(version)           # old single-resume results are renamed *.single_doc.*, never deleted
     p = paths(version)
     ask = importlib.import_module(rag_module(version, "agent")).ask
     cases = read_jsonl(p["dataset"])
@@ -39,12 +40,6 @@ def main(version: str):
         raise SystemExit(f"Dataset missing or empty: {p['dataset']}\nCopy eval_dataset.jsonl into that folder.")
 
     existing_rows = read_jsonl(p["results"])
-    if existing_rows and any("retrieved_chunks" not in r for r in existing_rows):
-        legacy = p["results"].with_name(p["results"].stem + ".legacy.jsonl")
-        if not legacy.exists():
-            shutil.copy(p["results"], legacy)
-            print(f"Old-format results backed up to {legacy.name}")
-
     existing = {} if args.force else {r.get("id"): r for r in existing_rows if r.get("id")}
     done = {}
 
@@ -65,7 +60,8 @@ def main(version: str):
         try:
             out = with_retry(lambda: ask(case["question"]), "ask")
             row = {**base, "actual_answer": out["answer"], "context": out["context"],
-                   "retrieved_chunks": out["retrieved_chunks"], "retriever_k": out["retriever_k"],
+                   "retrieved_chunks": out["retrieved_chunks"], "retrieved_sources": out["retrieved_sources"],
+                   "retrieved_pages": out["retrieved_pages"], "retriever_k": out["retriever_k"],
                    "retrieval_ms": out["retrieval_ms"], "generation_ms": out["generation_ms"],
                    "total_ms": out["total_ms"], "input_tokens": out["input_tokens"],
                    "output_tokens": out["output_tokens"], "error": None}
@@ -77,7 +73,8 @@ def main(version: str):
             raise
         except Exception as e:
             print(f"Error: {e}")
-            row = {**base, "actual_answer": None, "context": None, "retrieved_chunks": [], "retriever_k": None,
+            row = {**base, "actual_answer": None, "context": None, "retrieved_chunks": [], "retrieved_sources": [],
+                   "retrieved_pages": [], "retriever_k": None,
                    "retrieval_ms": None, "generation_ms": None, "total_ms": None,
                    "input_tokens": 0, "output_tokens": 0, "error": str(e)}
 

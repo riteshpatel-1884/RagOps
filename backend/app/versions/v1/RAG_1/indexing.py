@@ -1,20 +1,15 @@
-from pathlib import Path
-from dotenv import load_dotenv
-from .file_reader import extract_paragraphs
-from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_huggingface import HuggingFaceEmbeddings
+"""v1: raw PDF blocks, k = 3.
 
-load_dotenv()
+The ONLY things that differ between v1, v2 and v3 are RETRIEVER_K and the chunking below.
+Everything else (PDFs, embeddings, Qdrant, prompt, LLM) is shared through app/versions/toolkit.
+"""
+from app.versions.toolkit.corpus import load_blocks, describe
+from app.versions.toolkit.vectorstore import build_vector_store
 
-# v1: retriever k = 3
 RETRIEVER_K = 3
 
-# RAG_1 -> v1 -> versions -> app -> backend
-PDF_PATH = Path(__file__).resolve().parents[4] / "pdfs" / "ritesh_AI.pdf"
+blocks = load_blocks()                      # every PDF in backend/pdfs/, with source + page
+chunks = blocks
+vector_store = build_vector_store("ragops_v1", chunks)
 
-embedding = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
-vector_store = InMemoryVectorStore(embedding)
-
-chunks = extract_paragraphs(str(PDF_PATH))
-vector_store.add_texts(texts=chunks)
-print(f"indexed {len(chunks)} chunks (retriever k = {RETRIEVER_K})")
+print(f"v1: {len(chunks)} chunks ({describe(chunks)}) | retriever k = {RETRIEVER_K}")
