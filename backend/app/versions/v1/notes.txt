@@ -1,8 +1,21 @@
 python -m app.versions.toolkit.validate_dataset
+1. Retrieval eval
 python -m app.versions.v1.retrieval_eval1
+
+2. Answers (60 Groq calls)
 python -m app.versions.v1.eval_runner1
+
+3. Judge in batches
+python -m app.versions.v1.eval_all_metrics1 --start 1 --end 20
+python -m app.versions.v1.eval_all_metrics1 --start 21 --end 36
+python -m app.versions.v1.eval_all_metrics1 --start 37 --end 51
+python -m app.versions.v1.eval_all_metrics1 --start 52 --end 60 
+or
 python -m app.versions.v1.eval_all_metrics1
+
+4. Summary and save
 python -m app.versions.v1.evaluation_summary1
 python -m app.versions.v1.save_experiment1
 
 
+python -m app.versions.show_failures v3 0.7

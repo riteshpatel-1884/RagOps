@@ -24,6 +24,14 @@ QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY") or None
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 EMBEDDING_DIM = 384
+# BGE models are trained to see this prefix in FRONT OF QUERIES (documents stay as they are, so no re-indexing).
+# Off by default so existing results stay comparable. Try it:  $env:USE_QUERY_INSTRUCTION="1"
+# Words removed from the SEARCH query only (the LLM still sees the full question). Off by default.
+# In a single-company handbook the company name matches generic "about the company" chunks and hides the topic.
+# Try it:  $env:QUERY_STRIP_TERMS="Nexora"      (comma separated for several terms)
+QUERY_STRIP_TERMS = [t.strip() for t in os.getenv("QUERY_STRIP_TERMS", "").split(",") if t.strip()]
+BGE_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
+USE_QUERY_INSTRUCTION = os.getenv("USE_QUERY_INSTRUCTION", "0") == "1"
 
 # Register a new version here when you add one (v4, ...).
 VERSIONS = {

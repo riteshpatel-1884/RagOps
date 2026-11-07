@@ -9,7 +9,8 @@
 import hashlib
 import uuid
 
-from .config import EMBEDDING_DIM, EMBEDDING_MODEL, QDRANT_API_KEY, QDRANT_URL
+from .config import (BGE_QUERY_INSTRUCTION, EMBEDDING_DIM, EMBEDDING_MODEL, QDRANT_API_KEY, QDRANT_URL,
+                     USE_QUERY_INSTRUCTION)
 
 _embeddings = None
 _clients = {}
@@ -19,7 +20,17 @@ def get_embeddings():
     global _embeddings
     if _embeddings is None:
         from langchain_huggingface import HuggingFaceEmbeddings
-        _embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+
+        class QueryInstructionEmbeddings(HuggingFaceEmbeddings):
+            """Same model; only QUERIES get BGE's retrieval instruction (documents are embedded unchanged)."""
+            def embed_query(self, text: str):
+                return super().embed_query(BGE_QUERY_INSTRUCTION + text)
+
+        if USE_QUERY_INSTRUCTION:
+            print("[embeddings] BGE query instruction ON (queries only, no re-indexing needed)")
+            _embeddings = QueryInstructionEmbeddings(model_name=EMBEDDING_MODEL)
+        else:
+            _embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
     return _embeddings
 
 

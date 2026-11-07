@@ -38,12 +38,14 @@ def build_report(version: str) -> dict:
     retrieval = [r for r in read_jsonl(p["retrieval"]) if "at" in r and "retrieved_sources" in r]
 
     ok = [r for r in results if r.get("error") is None and r.get("actual_answer") is not None]
+    opts = sorted({r.get("retrieval_opts", "") for r in ok} | {r.get("retrieval_opts", "") for r in retrieval})
     answerable = [r for r in ok if r["category"] != UNANSWERABLE]
     unanswerable = [r for r in ok if r["category"] == UNANSWERABLE]
 
     k = next((r["retriever_k"] for r in ok + retrieval if r.get("retriever_k")), None)
     report = {
         "experiment": cfg["name"], "version": version, "retriever_k": k, "chunking": cfg["chunking"],
+        "retrieval_options": [o or "none" for o in opts],
         "corpus": {"vector_db": "Qdrant", "documents": sorted({d for r in dataset for d in (r.get("source") or [])})},
         "judge_model": next((e.get("judge_model") for e in evaluated if e.get("judge_model")), JUDGE_MODEL),
         "context_source": next((e.get("context_source") for e in evaluated if e.get("context_source")), None),
@@ -175,7 +177,10 @@ def print_report(rep: dict) -> None:
     print(f"\n==================== {rep['experiment']} ====================")
     print(f"k = {rep['retriever_k']} | chunking: {rep['chunking']} | judge: {rep['judge_model']} "
           f"| judge context: {rep['context_source']}")
-    print(f"corpus: {', '.join(rep['corpus']['documents'])} | vector DB: {rep['corpus']['vector_db']}")
+    print(f"corpus: {', '.join(rep['corpus']['documents'])} | vector DB: {rep['corpus']['vector_db']}"
+          f" | retrieval options: {', '.join(rep.get('retrieval_options', ['none']))}")
+    if len(rep.get("retrieval_options", [])) > 1:
+        print("WARNING: results were made with DIFFERENT retrieval options. Re-run eval_runner and retrieval_eval.")
     print(f"questions: {d['questions_in_dataset']} ({d['by_category']}) | answers generated: {d['answers_generated']} "
           f"| errors: {d['generation_errors']} | judged: {d['judged']}")
 

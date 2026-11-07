@@ -10,6 +10,7 @@ import time
 
 from .config import VERSIONS, paths, rag_module
 from .migrate import archive_single_doc
+from .query import options_tag
 from .retry import with_retry
 from .text_utils import read_jsonl, write_jsonl
 
@@ -23,6 +24,7 @@ def _is_complete(row, case):
         and row.get("error") is None
         and row.get("actual_answer") is not None
         and "retrieved_sources" in row           # rows from the old single-document runner lack this
+        and row.get("retrieval_opts", "") == options_tag()   # answers made with other retrieval options are redone
     )
 
 
@@ -62,6 +64,7 @@ def main(version: str):
             row = {**base, "actual_answer": out["answer"], "context": out["context"],
                    "retrieved_chunks": out["retrieved_chunks"], "retrieved_sources": out["retrieved_sources"],
                    "retrieved_pages": out["retrieved_pages"], "retriever_k": out["retriever_k"],
+                   "retrieval_query": out.get("retrieval_query"), "retrieval_opts": options_tag(),
                    "retrieval_ms": out["retrieval_ms"], "generation_ms": out["generation_ms"],
                    "total_ms": out["total_ms"], "input_tokens": out["input_tokens"],
                    "output_tokens": out["output_tokens"], "error": None}

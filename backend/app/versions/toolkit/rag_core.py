@@ -6,6 +6,8 @@ from langchain_groq import ChatGroq
 from langchain.messages import SystemMessage, HumanMessage
 from pydantic import BaseModel, Field
 
+from .query import prepare_query
+
 try:  # collects token usage for every LLM call (langchain-core >= 0.3.49)
     from langchain_core.callbacks import UsageMetadataCallbackHandler
 except ImportError:  # pragma: no cover
@@ -72,7 +74,8 @@ def format_context(docs) -> str:
 def make_ask(vector_store, k: int):
     def ask(question: str) -> dict:
         t_start = time.perf_counter()
-        docs = vector_store.similarity_search(question, k=k)               # 1. retrieve from Qdrant
+        search_query = prepare_query(question)                              # optional: drop uninformative terms
+        docs = vector_store.similarity_search(search_query, k=k)           # 1. retrieve from Qdrant
         t_retrieved = time.perf_counter()
 
         context = format_context(docs)                                      # 2. prepare context
@@ -97,6 +100,7 @@ def make_ask(vector_store, k: int):
             "retrieved_chunks": [d.page_content for d in docs],             # raw retriever output
             "retrieved_sources": [(d.metadata or {}).get("source") for d in docs],
             "retrieved_pages": [(d.metadata or {}).get("page") for d in docs],
+            "retrieval_query": search_query,
             "retriever_k": k,
             "retrieval_ms": (t_retrieved - t_start) * 1000,
             "generation_ms": (t_done - t_retrieved) * 1000,
