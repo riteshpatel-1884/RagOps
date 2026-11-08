@@ -82,5 +82,5 @@ export const NOTES = [
   "Faithfulness is 1.0 for every version because answers stay grounded in whatever was retrieved, even when the retrieval was wrong. Correctness is the metric that shows quality.",
   "Context relevancy falls in v3 because it sends bigger chunks; the judge rewards small context. Treat it as a side effect, not a regression in answers.",
   "v3 bundles two changes (merged chunks + cleaner search query), so v3 vs v1 does not isolate either one. The query change was chosen after inspecting failures on these same 60 questions, so v3's gain is probably a little optimistic.",
-  "v3's weak spot: cross-document questions (correctness 0.55). It also costs about 37% more per query than v1 because of the larger chunks.",
+  "v3's weak spot: cross-document questions (correctness 0.55). It also costs about 36% more per query than v1 because of the larger chunks.",
 ];
