@@ -3,9 +3,11 @@ import { useMemo, useState } from "react";
 import { VERSIONS, SECTIONS, NOTES } from "@/lib/experiments";
 import { compare, bestIndex, fmtVal, fmtDelta } from "@/lib/compare";
 
+const HEADLINE = ["Answer correctness", "Hit rate @3", "False refusal rate", "Average cost / query"];
+
 function Delta({ metric, from, to }) {
   const r = compare(metric, from, to);
-  if (r.status === "same") return <span className="delta same">— no change</span>;
+  if (r.status === "same") return <span className="delta same">no change</span>;
   const arrow = r.diff > 0 ? "▲" : "▼";
   return (
     <span
@@ -23,9 +25,14 @@ export default function EvalDashboard() {
   const [mode, setMode] = useState("baseline"); // "baseline" | "previous"
 
   const fromOf = (i) => (mode === "baseline" ? 0 : i - 1);
+  const last = VERSIONS.length - 1;
   const allMetrics = useMemo(
     () => SECTIONS.flatMap((s) => s.metrics.map((m) => ({ ...m, section: s.title }))),
     []
+  );
+  const headline = useMemo(
+    () => HEADLINE.map((label) => allMetrics.find((m) => m.label === label)).filter(Boolean),
+    [allMetrics]
   );
 
   const summary = useMemo(() => {
@@ -46,10 +53,28 @@ export default function EvalDashboard() {
   return (
     <>
       <div className="page-head">
-        <h1>Experiment evaluation</h1>
-        <p>The 9 metrics that matter for v1, v2 and v3, with what improved and what got worse.</p>
+        <div className="eyebrow">Evaluation</div>
+        <h1>Three RAG setups, measured</h1>
+        <p>
+          The same 60 questions (48 answerable, 12 unanswerable) over a resume and a company handbook, run
+          through each version and scored on the nine metrics below.
+        </p>
       </div>
 
+      <div className="grid4">
+        {headline.map((m) => (
+          <div key={m.label} className="card kpi">
+            <div className="kpi-label">{m.label}</div>
+            <div className="kpi-value">{fmtVal(m.values[last].v, m.fmt)}</div>
+            <div className="kpi-sub">
+              <span>{VERSIONS[last].id} vs {VERSIONS[0].id}</span>
+              <Delta metric={m} from={0} to={last} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <h2 className="section-title">Versions</h2>
       <div className="grid3">
         {VERSIONS.map((v) => (
           <div key={v.id} className="card version-card">
@@ -68,8 +93,9 @@ export default function EvalDashboard() {
         ))}
       </div>
 
+      <h2 className="section-title">What improved and what got worse</h2>
       <div className="toolbar">
-        <span className="muted">Compare each version against:</span>
+        <span className="muted">Compare each version against</span>
         <div className="seg">
           <button className={mode === "baseline" ? "seg-btn active" : "seg-btn"} onClick={() => setMode("baseline")}>
             Baseline (v1)
@@ -96,7 +122,7 @@ export default function EvalDashboard() {
 
             <div className="cols">
               <div>
-                <h3 className="good-t">▲ Improved</h3>
+                <h3 className="good-t">Improved</h3>
                 <ul className="list">
                   {s.improved.length === 0 && <li className="muted">Nothing improved</li>}
                   {s.improved.map(({ m, r }) => (
@@ -110,7 +136,7 @@ export default function EvalDashboard() {
                 </ul>
               </div>
               <div>
-                <h3 className="bad-t">▼ Got worse</h3>
+                <h3 className="bad-t">Got worse</h3>
                 <ul className="list">
                   {s.worse.length === 0 && <li className="muted">Nothing got worse</li>}
                   {s.worse.map(({ m, r }) => (
@@ -128,6 +154,7 @@ export default function EvalDashboard() {
         ))}
       </div>
 
+      <h2 className="section-title">Metrics</h2>
       {SECTIONS.map((sec) => (
         <section key={sec.id} className="card table-card">
           <div className="card-head">
@@ -151,14 +178,14 @@ export default function EvalDashboard() {
                     <tr key={m.label}>
                       <td className="metric-name">
                         {m.label}
-                        <span className="hint">{m.better === "up" ? "higher is better" : "lower is better"}</span>
+                        <span className="hint">{m.better === "up" ? "Higher is better" : "Lower is better"}</span>
                       </td>
                       {m.values.map((val, i) => (
                         <td key={i} className={best === i ? "best" : ""}>
                           <div className="val">{fmtVal(val.v, m.fmt)}</div>
                           {val.lo != null && (
                             <div className="ci">
-                              [{val.lo.toFixed(2)}–{val.hi.toFixed(2)}]
+                              95% CI {val.lo.toFixed(2)}–{val.hi.toFixed(2)}
                             </div>
                           )}
                           {i > 0 && <Delta metric={m} from={fromOf(i)} to={i} />}
@@ -174,13 +201,13 @@ export default function EvalDashboard() {
       ))}
 
       <div className="card notes">
-        <h2>Notes</h2>
+        <h2>Notes and caveats</h2>
         <ul>
           {NOTES.map((n) => (
             <li key={n}>{n}</li>
           ))}
-          <li>* next to a change means the 95% confidence intervals overlap, so the difference may be noise.</li>
-          <li>Highlighted cells mark the best version for that metric.</li>
+          <li>An asterisk (*) next to a change means the 95% confidence intervals overlap, so the difference may be noise.</li>
+          <li>The highlighted cell marks the best version for that metric.</li>
         </ul>
       </div>
     </>

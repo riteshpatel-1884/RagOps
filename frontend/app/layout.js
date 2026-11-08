@@ -3,7 +3,7 @@ import Navbar from "@/components/Navbar";
 
 export const metadata = {
   title: "RAGOPS",
-  description: "RAG evaluation platform: compare experiments and ask questions from your resume.",
+  description: "RAG experiments: ask documents questions and compare three retrieval setups with measured results.",
 };
 
 export default function RootLayout({ children }) {

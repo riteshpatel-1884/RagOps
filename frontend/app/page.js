@@ -5,10 +5,11 @@ export default function Home() {
   return (
     <>
       <div className="page-head">
-        <h1>Ask my resume</h1>
+        <div className="eyebrow">Playground</div>
+        <h1>Ask the documents</h1>
         <p>
-          Read the resume on the left, then ask a question on the right. Pick which RAG version
-          (v1, v2, v3) should answer it.
+          Questions are answered from a resume and a company HR handbook. Choose a RAG version
+          (v1, v2 or v3) and compare how each one answers the same question.
         </p>
       </div>
       <div className="split">

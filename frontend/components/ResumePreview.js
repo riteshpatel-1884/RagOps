@@ -22,7 +22,7 @@ export default function ResumePreview() {
   return (
     <section className="card preview">
       <div className="card-head">
-        <h2>Resume preview</h2>
+        <h2>Document preview</h2>
         {src && (
           <a className="btn-ghost" href={src} target="_blank" rel="noreferrer">
             Open in new tab ↗
@@ -41,12 +41,12 @@ export default function ResumePreview() {
       )}
 
       {loading ? (
-        <div className="empty">Loading resume…</div>
+        <div className="empty">Loading document…</div>
       ) : src ? (
-        <iframe className="pdf" src={`${src}#view=FitH`} title="Resume preview" />
+        <iframe className="pdf" src={`${src}#view=FitH`} title="Document preview" />
       ) : (
         <div className="empty">
-          No PDF found. Put your resume in <code>public/resume/</code> (e.g. <code>resume.pdf</code>).
+          No PDF found. Put a PDF in <code>public/resume/</code> (e.g. <code>resume.pdf</code>).
         </div>
       )}
     </section>

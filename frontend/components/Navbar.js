@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const links = [
-  { href: "/", label: "Ask Resume" },
+  { href: "/", label: "Ask" },
   { href: "/evaluation", label: "Evaluation" },
 ];
 
@@ -13,15 +13,13 @@ export default function Navbar() {
     <header className="nav">
       <div className="nav-inner">
         <Link href="/" className="brand">
-          <span className="brand-dot" /> RAGOPS
+          <span className="brand-mark">R</span>
+          RAGOPS
+          <small>RAG experiments</small>
         </Link>
         <nav className="nav-links">
           {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={path === l.href ? "nav-link active" : "nav-link"}
-            >
+            <Link key={l.href} href={l.href} className={path === l.href ? "nav-link active" : "nav-link"}>
               {l.label}
             </Link>
           ))}
