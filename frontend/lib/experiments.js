@@ -84,3 +84,11 @@ export const NOTES = [
   "v3 bundles two changes (merged chunks + cleaner search query), so v3 vs v1 does not isolate either one. The query change was chosen after inspecting failures on these same 60 questions, so v3's gain is probably a little optimistic.",
   "v3's weak spot: cross-document questions (correctness 0.55). It also costs about 36% more per query than v1 because of the larger chunks.",
 ];
+
+// Retrieval quality as more chunks are retrieved (k = 1, 3, 5). Judge-free.
+// v1 and v2 use the same chunks, so they share one curve.
+export const RETRIEVAL_CURVE = {
+  k: [1, 3, 5],
+  hit: { "v1 / v2": [0.479, 0.667, 0.792], v3: [0.792, 0.979, 0.979] },
+  recall: { "v1 / v2": [0.330, 0.528, 0.635], v3: [0.646, 0.918, 0.938] },
+};

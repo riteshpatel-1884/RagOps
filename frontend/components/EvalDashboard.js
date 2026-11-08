@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
-import { VERSIONS, SECTIONS, NOTES } from "@/lib/experiments";
+import { VERSIONS, SECTIONS, NOTES, RETRIEVAL_CURVE } from "@/lib/experiments";
+import { BarChart, LineChart, Scatter, Legend, COLORS } from "@/components/Charts";
 import { compare, bestIndex, fmtVal, fmtDelta } from "@/lib/compare";
 
 const HEADLINE = ["Answer correctness", "Hit rate @3", "False refusal rate", "Average cost / query"];
@@ -34,6 +35,14 @@ export default function EvalDashboard() {
     () => HEADLINE.map((label) => allMetrics.find((m) => m.label === label)).filter(Boolean),
     [allMetrics]
   );
+
+  const val = (label) => allMetrics.find((m) => m.label === label).values.map((x) => x.v);
+  const vSeries = VERSIONS.map((v) => ({ name: `${v.id} · ${v.tag}`, color: COLORS[v.id] }));
+  const vShort = VERSIONS.map((v) => ({ name: v.id, color: COLORS[v.id] }));
+  const higher = ["Answer correctness", "Hit rate @3", "Recall @3", "Abstention accuracy"];
+  const errors = ["False refusal rate", "Hallucination rate"];
+  const curveColors = { "v1 / v2": COLORS.v1, v3: COLORS.v3 };
+  const curveSeries = (obj) => Object.entries(obj).map(([name, values]) => ({ name, values, color: curveColors[name] }));
 
   const summary = useMemo(() => {
     return [1, 2].map((i) => {
@@ -72,6 +81,77 @@ export default function EvalDashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      <h2 className="section-title">Charts</h2>
+      <div className="grid2">
+        <div className="card chart-card">
+          <h3>Quality and retrieval</h3>
+          <div className="sub">Higher is better</div>
+          <Legend items={vShort} />
+          <BarChart
+            series={vShort}
+            groups={higher.map((l) => ({ label: l, values: val(l) }))}
+          />
+        </div>
+        <div className="card chart-card">
+          <h3>Failure rates</h3>
+          <div className="sub">Lower is better</div>
+          <Legend items={vShort} />
+          <BarChart
+            series={vShort}
+            groups={errors.map((l) => ({ label: l, values: val(l) }))}
+          />
+          <div className="takeaway">v2 shows 0% hallucination only because it refuses 60% of answerable questions.</div>
+        </div>
+        <div className="card chart-card">
+          <h3>Progress across versions</h3>
+          <div className="sub">How the key metrics move from v1 to v3</div>
+          <Legend
+            items={[
+              { name: "Answer correctness", color: "#4f46e5" },
+              { name: "Hit rate @3", color: "#0ea5e9" },
+              { name: "False refusal rate", color: "#ef4444" },
+            ]}
+          />
+          <LineChart
+            xLabels={VERSIONS.map((v) => v.id)}
+            series={[
+              { name: "Answer correctness", color: "#4f46e5", values: val("Answer correctness") },
+              { name: "Hit rate @3", color: "#0ea5e9", values: val("Hit rate @3") },
+              { name: "False refusal rate", color: "#ef4444", values: val("False refusal rate"), dash: "6 5", below: true },
+            ]}
+          />
+        </div>
+        <div className="card chart-card">
+          <h3>Cost vs correctness</h3>
+          <div className="sub">Top left is best: cheaper and more correct</div>
+          <Legend items={vShort} />
+          <Scatter
+            xMax={0.00035}
+            xFmt={(v) => `$${v.toFixed(5)}`}
+            xTitle="Average cost per query"
+            yTitle="Answer correctness"
+            points={VERSIONS.map((v, i) => ({
+              label: v.id,
+              color: COLORS[v.id],
+              x: val("Average cost / query")[i],
+              y: val("Answer correctness")[i],
+            }))}
+          />
+        </div>
+        <div className="card chart-card">
+          <h3>Hit rate by number of chunks retrieved</h3>
+          <div className="sub">Judge-free. v3 finds the right chunk at k=1 about as often as v1 does at k=5</div>
+          <Legend items={curveSeries(RETRIEVAL_CURVE.hit).map(({ name, color }) => ({ name, color }))} />
+          <LineChart xLabels={RETRIEVAL_CURVE.k.map((k) => `k=${k}`)} series={curveSeries(RETRIEVAL_CURVE.hit)} />
+        </div>
+        <div className="card chart-card">
+          <h3>Recall by number of chunks retrieved</h3>
+          <div className="sub">Share of the needed facts found in the retrieved chunks</div>
+          <Legend items={curveSeries(RETRIEVAL_CURVE.recall).map(({ name, color }) => ({ name, color }))} />
+          <LineChart xLabels={RETRIEVAL_CURVE.k.map((k) => `k=${k}`)} series={curveSeries(RETRIEVAL_CURVE.recall)} />
+        </div>
       </div>
 
       <h2 className="section-title">Versions</h2>
