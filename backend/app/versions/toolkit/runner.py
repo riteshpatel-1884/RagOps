@@ -17,18 +17,19 @@ from .text_utils import read_jsonl, write_jsonl
 DATASET_FIELDS = ("category", "source", "paraphrase_group", "expected_answer", "gold_facts", "evidence")
 
 
-def _is_complete(row, case):
+def _is_complete(row, case, tag):
     return (
         row is not None
         and row.get("question") == case["question"]
         and row.get("error") is None
         and row.get("actual_answer") is not None
         and "retrieved_sources" in row           # rows from the old single-document runner lack this
-        and row.get("retrieval_opts", "") == options_tag()   # answers made with other retrieval options are redone
+        and row.get("retrieval_opts", "") == tag   # answers made with other retrieval options are redone
     )
 
 
 def main(version: str):
+    tag = options_tag(VERSIONS[version].get("strip"))   # retrieval options of THIS version
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="regenerate every answer")
     parser.add_argument("--sleep", type=float, default=2.0, help="seconds between questions")
@@ -51,7 +52,7 @@ def main(version: str):
     reused = 0
     for i, case in enumerate(cases, 1):
         prev = existing.get(case["id"])
-        if _is_complete(prev, case):
+        if _is_complete(prev, case, tag):
             done[case["id"]] = {**prev, **{k: case[k] for k in DATASET_FIELDS}}
             reused += 1
             continue
@@ -64,7 +65,7 @@ def main(version: str):
             row = {**base, "actual_answer": out["answer"], "context": out["context"],
                    "retrieved_chunks": out["retrieved_chunks"], "retrieved_sources": out["retrieved_sources"],
                    "retrieved_pages": out["retrieved_pages"], "retriever_k": out["retriever_k"],
-                   "retrieval_query": out.get("retrieval_query"), "retrieval_opts": options_tag(),
+                   "retrieval_query": out.get("retrieval_query"), "retrieval_opts": tag,
                    "retrieval_ms": out["retrieval_ms"], "generation_ms": out["generation_ms"],
                    "total_ms": out["total_ms"], "input_tokens": out["input_tokens"],
                    "output_tokens": out["output_tokens"], "error": None}

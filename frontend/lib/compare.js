@@ -7,6 +7,8 @@ export function fmtVal(v, fmt) {
       return Math.round(v).toLocaleString();
     case "usd":
       return `$${v.toFixed(3)}`;
+    case "cost":
+      return `$${v.toFixed(5)}`;
     default:
       return v.toFixed(3);
   }
@@ -22,6 +24,8 @@ export function fmtDelta(d, fmt) {
       return `${sign}${Math.round(a).toLocaleString()}`;
     case "usd":
       return `${sign}$${a.toFixed(3)}`;
+    case "cost":
+      return `${sign}$${a.toFixed(5)}`;
     default:
       return `${sign}${a.toFixed(3)}`;
   }

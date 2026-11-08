@@ -1,9 +1,9 @@
 """v3 agent: retrieval from this version's Qdrant collection + the shared generator."""
 from app.versions.toolkit.rag_core import Answer, SYSTEM_PROMPT, llm, structured_llm, make_ask
 
-from .indexing import vector_store, RETRIEVER_K
+from .indexing import vector_store, RETRIEVER_K, STRIP_TERMS
 
-ask = make_ask(vector_store, RETRIEVER_K)
+ask = make_ask(vector_store, RETRIEVER_K, STRIP_TERMS)
 
 
 if __name__ == "__main__":

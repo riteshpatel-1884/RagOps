@@ -26,18 +26,17 @@ EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 EMBEDDING_DIM = 384
 # BGE models are trained to see this prefix in FRONT OF QUERIES (documents stay as they are, so no re-indexing).
 # Off by default so existing results stay comparable. Try it:  $env:USE_QUERY_INSTRUCTION="1"
-# Words removed from the SEARCH query only (the LLM still sees the full question). Off by default.
-# In a single-company handbook the company name matches generic "about the company" chunks and hides the topic.
-# Try it:  $env:QUERY_STRIP_TERMS="Nexora"      (comma separated for several terms)
-QUERY_STRIP_TERMS = [t.strip() for t in os.getenv("QUERY_STRIP_TERMS", "").split(",") if t.strip()]
+# Words removed from the SEARCH query only (the LLM still sees the full question) are set PER VERSION below
+# ("strip"), so nothing in .env or the shell can silently change a version. Do NOT set QUERY_STRIP_TERMS any more.
 BGE_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
 USE_QUERY_INSTRUCTION = os.getenv("USE_QUERY_INSTRUCTION", "0") == "1"
 
-# Register a new version here when you add one (v4, ...).
+# Register a new version here when you add one. "strip" = words removed from the SEARCH query only.
+# v3 = merged chunks + the company name removed from the SEARCH query (the LLM still sees the full question).
 VERSIONS = {
-    "v1": {"n": 1, "name": "experiment_v1_k3",        "chunking": "raw PDF blocks",                      "collection": "ragops_v1"},
-    "v2": {"n": 2, "name": "experiment_v2_k1",        "chunking": "raw PDF blocks",                      "collection": "ragops_v2"},
-    "v3": {"n": 3, "name": "experiment_v3_k3_merged", "chunking": "merged blocks (700 chars, overlap 1)", "collection": "ragops_v3"},
+    "v1":  {"n": 1, "name": "experiment_v1_k3",               "chunking": "raw PDF blocks",                      "collection": "ragops_v1", "strip": []},
+    "v2":  {"n": 2, "name": "experiment_v2_k1",               "chunking": "raw PDF blocks",                      "collection": "ragops_v2", "strip": []},
+    "v3":  {"n": 3, "name": "experiment_v3_k3_merged",        "chunking": "merged blocks (700 chars, overlap 1) + company name dropped from the search query", "collection": "ragops_v3", "strip": ["Nexora"]},
 }
 
 # ---- Judge (LLM-as-a-judge). Keep it FIXED across versions or scores are not comparable.

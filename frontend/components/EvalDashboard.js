@@ -47,7 +47,7 @@ export default function EvalDashboard() {
     <>
       <div className="page-head">
         <h1>Experiment evaluation</h1>
-        <p>All metrics for v1, v2 and v3, with what improved and what got worse.</p>
+        <p>The 9 metrics that matter for v1, v2 and v3, with what improved and what got worse.</p>
       </div>
 
       <div className="grid3">
@@ -60,7 +60,9 @@ export default function EvalDashboard() {
             <dl>
               <div><dt>Retriever</dt><dd>{v.retriever}</dd></div>
               <div><dt>Chunking</dt><dd>{v.chunking}</dd></div>
-              <div><dt>Questions judged</dt><dd>{v.questions}</dd></div>
+              <div><dt>Questions</dt><dd>{v.questions}</dd></div>
+              <div><dt>What changed</dt><dd>{v.change}</dd></div>
+              <div><dt>Effect</dt><dd>{v.effect}</dd></div>
             </dl>
           </div>
         ))}

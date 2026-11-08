@@ -9,7 +9,7 @@ import importlib
 import time
 from statistics import median
 
-from .config import RETRIEVAL_DEPTHS, paths, rag_module, UNANSWERABLE
+from .config import RETRIEVAL_DEPTHS, VERSIONS, paths, rag_module, UNANSWERABLE
 from .migrate import archive_single_doc
 from .query import options_tag, prepare_query
 from .retrieval_metrics import retrieval_record
@@ -21,7 +21,8 @@ def main(version: str):
     ap.add_argument("--strip", metavar="TERM", help="diagnostic: remove this word from every question before searching")
     ap.add_argument("--no-save", action="store_true", help="print the table only; keep the saved retrieval results untouched")
     args = ap.parse_args()
-    print(f"[retrieval options] {options_tag() or 'none'}" + (f" | --strip {args.strip!r}" if args.strip else "")
+    terms = [args.strip] if args.strip else VERSIONS[version].get("strip")   # --strip overrides the version's own setting
+    print(f"[retrieval options] {options_tag(terms) or 'none'}" + (f" | --strip {args.strip!r}" if args.strip else "")
           + (" | --no-save" if args.no_save else ""))
 
     archive_single_doc(version)
@@ -42,7 +43,7 @@ def main(version: str):
         times, docs = [], None
         for _ in range(3):                               # median of 3 runs = stable latency
             t0 = time.perf_counter()
-            docs = store.similarity_search(prepare_query(c["question"], [args.strip] if args.strip else None), k=k_max)
+            docs = store.similarity_search(prepare_query(c["question"], terms), k=k_max)
             times.append((time.perf_counter() - t0) * 1000)
         chunks = [d.page_content for d in docs]
         sources = [(d.metadata or {}).get("source") for d in docs]
@@ -53,7 +54,7 @@ def main(version: str):
             **retrieval_record(chunks, c["evidence"], depths, sources, c.get("source")),
             "retrieved_chunks": chunks, "retrieved_sources": sources,
             "retrieved_pages": [(d.metadata or {}).get("page") for d in docs],
-            "retrieval_opts": options_tag() if not args.strip else f"strip={args.strip.lower()}",
+            "retrieval_opts": options_tag(terms),
         })
 
     if not args.no_save:

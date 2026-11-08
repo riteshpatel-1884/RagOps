@@ -71,10 +71,10 @@ def format_context(docs) -> str:
     return "\n\n".join(parts)
 
 
-def make_ask(vector_store, k: int):
+def make_ask(vector_store, k: int, strip_terms=()):
     def ask(question: str) -> dict:
         t_start = time.perf_counter()
-        search_query = prepare_query(question)                              # optional: drop uninformative terms
+        search_query = prepare_query(question, strip_terms)                              # optional: drop uninformative terms
         docs = vector_store.similarity_search(search_query, k=k)           # 1. retrieve from Qdrant
         t_retrieved = time.perf_counter()
 

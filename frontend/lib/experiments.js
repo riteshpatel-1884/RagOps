@@ -2,92 +2,85 @@
 const c = (v, lo, hi) => ({ v, lo, hi });
 const p = (v) => ({ v });
 
+// 60-question evaluation set (48 answerable + 12 unanswerable) over 2 PDFs: a resume and a 12-page company handbook.
 export const VERSIONS = [
-  { id: "v1", tag: "Baseline", retriever: "k=3", chunking: "raw PDF blocks", questions: 41 },
-  { id: "v2", tag: "Smaller retriever", retriever: "k=1", chunking: "raw PDF blocks", questions: 41 },
-  { id: "v3", tag: "Merged chunks", retriever: "k=3", chunking: "merged blocks (700 chars)", questions: 41 },
+  {
+    id: "v1",
+    tag: "Baseline",
+    retriever: "k=3",
+    chunking: "raw PDF blocks",
+    questions: "48 answerable + 12 unanswerable",
+    change: "Starting point: raw PDF blocks as chunks, top 3 chunks sent to the LLM.",
+    effect: "Chunks are too small to hold a full answer, so multi-part and multi-hop questions fail and the model often says 'not found'.",
+  },
+  {
+    id: "v2",
+    tag: "Smaller retriever",
+    retriever: "k=1",
+    chunking: "raw PDF blocks",
+    questions: "48 answerable + 12 unanswerable",
+    change: "Same as v1 but only the top 1 chunk is sent to the LLM.",
+    effect: "Cheapest, but 60% of answerable questions are refused. Zero hallucination only because it refuses almost everything.",
+  },
+  {
+    id: "v3",
+    tag: "Merged chunks + cleaner search",
+    retriever: "k=3",
+    chunking: "merged blocks (700 chars)",
+    questions: "48 answerable + 12 unanswerable",
+    change: "Two changes: (1) neighbouring blocks merged into ~700-character chunks, (2) the company name is removed from the search query (the LLM still sees the full question).",
+    effect: "Chunks now carry whole answers, and the topic chunk is no longer outranked by generic 'about the company' text. Best quality, at the price of more tokens.",
+  },
 ];
 
 // better: "up" = higher is better, "down" = lower is better
-// fmt: score | ms | int | usd
+// fmt: score | cost
 export const SECTIONS = [
   {
-    id: "judge",
-    title: "Judge metrics (answerable questions)",
-    note: "Mean with 95% CI",
+    id: "quality",
+    title: "Answer quality",
+    note: "Judged on the 48 answerable questions. Mean with 95% CI",
     metrics: [
-      { label: "Answer relevancy", better: "up", fmt: "score", values: [c(0.988, 0.97, 1.0), c(1.0, 1.0, 1.0), c(0.988, 0.96, 1.0)] },
-      { label: "Faithfulness", better: "up", fmt: "score", values: [c(0.951, 0.88, 1.0), c(0.927, 0.83, 1.0), c(0.976, 0.93, 1.0)] },
-      { label: "Context relevancy", better: "up", fmt: "score", values: [c(0.289, 0.24, 0.34), c(0.341, 0.21, 0.49), c(0.194, 0.15, 0.25)] },
-      { label: "Correctness", better: "up", fmt: "score", values: [c(0.551, 0.43, 0.66), c(0.185, 0.1, 0.29), c(0.807, 0.73, 0.87)] },
-      { label: "Completeness", better: "up", fmt: "score", values: [c(0.602, 0.48, 0.71), c(0.224, 0.12, 0.35), c(0.859, 0.78, 0.92)] },
+      { label: "Answer correctness", better: "up", fmt: "score", values: [c(0.435, 0.315, 0.558), c(0.258, 0.163, 0.356), c(0.798, 0.719, 0.873)] },
+      { label: "Faithfulness", better: "up", fmt: "score", values: [c(1.0, 1.0, 1.0), c(1.0, 1.0, 1.0), c(1.0, 1.0, 1.0)] },
+      { label: "Context relevancy", better: "up", fmt: "score", values: [c(0.33, 0.247, 0.413), c(0.505, 0.359, 0.646), c(0.165, 0.125, 0.214)] },
     ],
   },
   {
     id: "retrieval",
-    title: "Retrieval (at each version's own k)",
-    note: "Mean with 95% CI",
+    title: "Retrieval (top 3 chunks)",
+    note: "Judge-free. Same depth (k=3) for every version",
     metrics: [
-      { label: "Hit rate", better: "up", fmt: "score", values: [c(0.829, 0.71, 0.93), c(0.463, 0.32, 0.63), c(1.0, 1.0, 1.0)] },
-      { label: "Recall", better: "up", fmt: "score", values: [c(0.709, 0.58, 0.83), c(0.356, 0.23, 0.5), c(0.951, 0.9, 0.99)] },
-      { label: "Precision", better: "up", fmt: "score", values: [c(0.301, 0.25, 0.35), c(0.463, 0.32, 0.63), c(0.439, 0.39, 0.5)] },
-      { label: "MRR", better: "up", fmt: "score", values: [c(0.638, 0.52, 0.76), c(0.463, 0.32, 0.63), c(0.846, 0.77, 0.92)] },
+      { label: "Hit rate @3", better: "up", fmt: "score", values: [c(0.667, 0.521, 0.792), c(0.667, 0.521, 0.792), c(0.979, 0.938, 1.0)] },
+      { label: "Recall @3", better: "up", fmt: "score", values: [c(0.528, 0.398, 0.656), c(0.528, 0.398, 0.656), c(0.918, 0.851, 0.972)] },
     ],
   },
   {
-    id: "curve",
-    title: "Retrieval curve at fixed depths",
-    note: "Hit rate and recall at the same k for every version",
+    id: "reliability",
+    title: "Reliability",
+    note: "Hallucination and abstention use the 12 unanswerable questions; false refusal uses the 48 answerable ones",
     metrics: [
-      { label: "Hit @ k=1", better: "up", fmt: "score", values: [p(0.46), p(0.46), p(0.71)] },
-      { label: "Recall @ k=1", better: "up", fmt: "score", values: [p(0.36), p(0.36), p(0.64)] },
-      { label: "Hit @ k=3", better: "up", fmt: "score", values: [p(0.83), p(0.83), p(1.0)] },
-      { label: "Recall @ k=3", better: "up", fmt: "score", values: [p(0.71), p(0.71), p(0.95)] },
-      { label: "Hit @ k=5", better: "up", fmt: "score", values: [p(0.93), p(0.93), p(1.0)] },
-      { label: "Recall @ k=5", better: "up", fmt: "score", values: [p(0.89), p(0.89), p(0.98)] },
+      { label: "Hallucination rate", better: "down", fmt: "score", values: [c(0.167, 0.0, 0.417), c(0.0, 0.0, 0.0), c(0.083, 0.0, 0.25)] },
+      { label: "Abstention accuracy", better: "up", fmt: "score", values: [c(0.833, 0.583, 1.0), c(1.0, 1.0, 1.0), c(0.917, 0.75, 1.0)] },
+      { label: "False refusal rate", better: "down", fmt: "score", values: [c(0.396, 0.25, 0.542), c(0.604, 0.458, 0.75), c(0.042, 0.0, 0.104)] },
     ],
   },
   {
-    id: "generation",
-    title: "Generation (judge-free)",
-    note: "Mean with 95% CI",
+    id: "cost",
+    title: "Cost",
+    note: "Groq gpt-oss-120b list price. Lower is better",
     metrics: [
-      { label: "Key-fact coverage", better: "up", fmt: "score", values: [c(0.655, 0.52, 0.79), c(0.297, 0.17, 0.44), c(0.862, 0.77, 0.94)] },
-      { label: "Abstention accuracy", better: "up", fmt: "score", values: [c(0.9, 0.7, 1.0), c(1.0, 1.0, 1.0), c(0.9, 0.7, 1.0)] },
-      { label: "Hallucination rate", better: "down", fmt: "score", values: [c(0.1, 0.0, 0.3), c(0.0, 0.0, 0.0), c(0.1, 0.0, 0.3)] },
-      { label: "False refusal", better: "down", fmt: "score", values: [c(0.171, 0.07, 0.29), c(0.659, 0.51, 0.8), c(0.0, 0.0, 0.0)] },
-      { label: "Context grounding", better: "up", fmt: "score", values: [c(0.998, 0.99, 1.0), c(1.0, 1.0, 1.0), c(0.976, 0.93, 1.0)] },
-      { label: "Paraphrase consistency", better: "up", fmt: "score", values: [p(0.533), p(0.8), p(0.7)] },
-    ],
-  },
-  {
-    id: "performance",
-    title: "Performance & cost",
-    note: "Lower is better",
-    metrics: [
-      { label: "Retrieval latency p50", better: "down", fmt: "ms", values: [p(192), p(199), p(219)] },
-      { label: "Generation latency p50", better: "down", fmt: "ms", values: [p(1218), p(1317), p(1487)] },
-      { label: "Total latency p50", better: "down", fmt: "ms", values: [p(1514), p(1580), p(1886)] },
-      { label: "Total latency p95", better: "down", fmt: "ms", values: [p(2933), p(10462), p(6496)] },
-      { label: "Input tokens / query", better: "down", fmt: "int", values: [p(392), p(331), p(687)] },
-      { label: "Output tokens / query", better: "down", fmt: "int", values: [p(288), p(224), p(310)] },
-      { label: "Cost / 1,000 queries", better: "down", fmt: "usd", values: [p(0.232), p(0.184), p(0.289)] },
-    ],
-  },
-  {
-    id: "category",
-    title: "Correctness by question category",
-    note: "Where each version wins or loses",
-    metrics: [
-      { label: "multi_hop", better: "up", fmt: "score", values: [p(0.067), p(0.067), p(0.517)] },
-      { label: "multi_part", better: "up", fmt: "score", values: [p(0.545), p(0.105), p(0.815)] },
-      { label: "single_fact", better: "up", fmt: "score", values: [p(0.753), p(0.34), p(0.913)] },
+      { label: "Average cost / query", better: "down", fmt: "cost", values: [p(0.000222), p(0.000158), p(0.000303)] },
     ],
   },
 ];
 
 export const NOTES = [
-  "CI = 95% bootstrap interval. Overlapping intervals mean the difference may be noise.",
-  "v2 (k=1) answers fewer questions: false refusal jumps to 0.659 and correctness collapses.",
-  "v3 (merged 700-char blocks) is the best on correctness, completeness, hit rate and multi-hop questions, but costs more tokens and latency and has lower context relevancy.",
+  "60 questions over 2 documents (a resume and a 12-page company handbook). CI = 95% bootstrap interval; overlapping intervals mean the difference may be noise.",
+  "v2 hallucinates 0% only because it refuses 60% of answerable questions. Read hallucination together with false refusal.",
+  "Hit rate and recall @3 are identical for v1 and v2 because they share the same chunks. v2 just sends only the top 1 chunk to the LLM (hit rate @1 is 0.48).",
+  "Faithfulness is 1.0 for every version because answers stay grounded in whatever was retrieved, even when the retrieval was wrong. Correctness is the metric that shows quality.",
+  "Context relevancy falls in v3 because it sends bigger chunks; the judge rewards small context. Treat it as a side effect, not a regression in answers.",
+  "v3 bundles two changes (merged chunks + cleaner search query), so v3 vs v1 does not isolate either one. The query change was chosen after inspecting failures on these same 60 questions, so v3's gain is probably a little optimistic.",
+  "v3's weak spot: cross-document questions (correctness 0.55). It also costs about 37% more per query than v1 because of the larger chunks.",
 ];
