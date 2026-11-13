@@ -125,6 +125,10 @@ button { font-family: inherit; }
 .vhead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .vid { font-size: 13px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 3px 10px; border-radius: 999px; }
 .vtag { color: var(--text); font-size: 15px; font-weight: 600; }
+.grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; margin-bottom: 24px; }
+@media (max-width: 520px) { .grid-auto { grid-template-columns: 1fr; } }
+.code-title { margin-top: 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.code { margin-top: 8px; background: var(--subtle); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.55; color: var(--text-2); white-space: pre-wrap; overflow-x: auto; }
 .version-card dl > div { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
 .version-card dt { color: var(--muted); flex-shrink: 0; }
 .version-card dd { font-weight: 500; text-align: right; color: var(--text-2); }

@@ -1,12 +1,8 @@
-LeaderLab
+python -m app.versions.cli index v1
+python -m app.versions.cli run v1
+python -m app.versions.cli judge v1 --every 2 --sleep 10
+python -m app.versions.cli summary v1
+python -m app.versions.cli save v1
+python -m app.versions.cli compare
 
-To run: python -m app.single_tests.test_single_eval_answer_relevancy 
 
-Metrices we are going to measure
-
-| Metric            | What it evaluates                                     | Required inputs                |
-| ----------------- | ----------------------------------------------------- | ------------------------------ |
-| Answer Relevancy  | Whether the answer addresses the question             | Question, Actual answer        |
-| Correctness       | Similarity between actual and expected answers        | Expected answer, Actual answer |
-| Faithfulness      | Whether the answer is supported by retrieved context  | Context, Actual answer         |
-| Context Relevancy | Whether retrieved context is relevant to the question | Question, Context              |

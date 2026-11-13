@@ -1,0 +1,70 @@
+python -m app.versions.cli run v2 --sleep 3
+python -m app.versions.cli judge v2 --every 2 --sleep 10
+python -m app.versions.cli summary v2
+python -m app.versions.cli save v2
+python -m app.versions.cli compare
+
+
+
+python -m app.evaluation.retrieval_check 
+(backend) PS D:\ragops\backend> python -m app.evaluation.retrieval_check
+85 answerable questions
+
+--- A  v1 (2000, vector, top 3)
+try0: 41 chunks, median 1801 chars, max 1996 | static | gemini-embedding-001 | vector top_k=3
+try0: embedding 41 chunks with gemini-embedding-001 (768 dims) ...
+try0: indexed 41 points in asterion_try0_ef2588491a
+--- B  v1 + rerank (fetch 10, top 3)
+try1: 41 chunks, median 1801 chars, max 1996 | static | gemini-embedding-001 | vector_rerank top_k=3
+try1: embedding 41 chunks with gemini-embedding-001 (768 dims) ...
+try1: indexed 41 points in asterion_try1_092d65ec44
+--- C  1000 chars, vector, top 4
+try2: 70 chunks, median 817 chars, max 992 | static | gemini-embedding-001 | vector top_k=4
+try2: embedding 70 chunks with gemini-embedding-001 (768 dims) ...
+try2: indexed 70 points in asterion_try2_45e3519726
+--- D  1000 chars + rerank (15 -> 4)
+try3: 70 chunks, median 817 chars, max 992 | static | gemini-embedding-001 | vector_rerank top_k=4
+try3: embedding 70 chunks with gemini-embedding-001 (768 dims) ...
+try3: indexed 70 points in asterion_try3_ed774a00f0
+--- E  700 chars + rerank (20 -> 5)
+try4: 95 chunks, median 618 chars, max 694 | static | gemini-embedding-001 | vector_rerank top_k=5
+try4: embedding 95 chunks with gemini-embedding-001 (768 dims) ...
+try4: indexed 95 points in asterion_try4_201da3d35c
+
+================================================================================================
+setup                                   any-hit  all-hit  ctx chars   by type (any-hit)
+A  v1 (2000, vector, top 3)               0.953    0.800       4001   single_fact:0.95  multi_part:0.96  multi_hop:0.95
+B  v1 + rerank (fetch 10, top 3)          0.965    0.850       4947   single_fact:0.97  multi_part:0.96  multi_hop:0.95
+C  1000 chars, vector, top 4              0.988    0.875       3034   single_fact:0.97  multi_part:1.00  multi_hop:1.00
+D  1000 chars + rerank (15 -> 4)          0.976    0.775       3191   single_fact:0.97  multi_part:1.00  multi_hop:0.95
+E  700 chars + rerank (20 -> 5)           0.988    0.750       2963   single_fact:1.00  multi_part:1.00  multi_hop:0.95
+(backend) PS D:\ragops\backend> 
+
+
+
+
+The script works. Its row A matches your real v1 hit rate (0.953), so I trust the other rows.
+
+Setup	any-hit	all-hit	context chars sent
+A: v1 (2000 chars, top 3)	0.953	0.800	4001
+B: v1 + rerank (fetch 10, top 3)	0.965	0.850	4947
+C: 1000 chars, vector, top 4	0.988	0.875	3034
+D: 1000 chars + rerank (15 → 4)	0.976	0.775	3191
+E: 700 chars + rerank (20 → 5)	0.988	0.750	2963
+
+What it shows
+
+C is the best option, and it has no reranker. Smaller chunks with plain vector search give the best any-hit and all-hit, and send 24% less text than v1.
+The reranker doesn’t help. B improves a little but sends more text (4947 characters), because the reranker prefers long chunks. With 1000-character chunks it hurts all-hit (D 0.775 vs C 0.875), and it hurts it further at 700 characters (E 0.750). The tiny FlashRank model seems to push out the second piece of evidence that multi-hop questions need.
+The gaps are small. 0.953 to 0.988 is about 3 questions out of 85. C is the best of what we tried, not a proven big win, and I picked it using the same questions it’s scored on. Treat the final judged numbers with that in mind.
+
+Make C your v2
+It changes chunk size and top_k together. That’s a small confound, but it’s the combination that works. In config.py, replace the "v2" block with:
+
+python
+    "v2": {
+        "n": 2, "name": "experiment_v2_smaller_chunks", "label": "Smaller chunks (1000 chars), top 4",
+        "chunking": {"strategy": "static", "chunk_chars": 1000, "overlap_chars": 150},
+        "embedding": {"model": EMBEDDING_1, "dim": 768},
+        "retrieval": {"mode": "vector", "top_k": 4},
+    },

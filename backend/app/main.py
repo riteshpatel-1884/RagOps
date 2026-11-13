@@ -23,14 +23,14 @@ app.add_middleware(
 
 class AskRequest(BaseModel):
     question: str
-    version: str = "v3"  # "v1" | "v2" | "v3"
+    version: str = "v2"  # "v1" | "v2"
 
 
 # version -> module that exposes ask(question) -> dict
 AGENT_MODULES = {
-    "v1": "app.versions.v1.RAG_1.agent",  # k=3, raw PDF blocks
-    "v2": "app.versions.v2.RAG_2.agent",  # k=1, raw PDF blocks
-    "v3": "app.versions.v3.RAG_3.agent",  # k=3, merged blocks (700 chars)
+    "v1": "app.versions.v1.RAG_1.agent",  # static 2000-char chunks, vector top 3
+    "v2": "app.versions.v2.RAG_2.agent",  # static 1000-char chunks, vector top 4
+    # "v3": "app.versions.v3.RAG_3.agent",  # add when v3 exists
 }
 
 _agents = {}
@@ -38,8 +38,8 @@ _lock = threading.Lock()
 
 
 def _get_agent(version: str):
-    """Import a version lazily. Importing builds its vector store (loads the
-    embedding model and indexes the PDF), so we do it once, on first use."""
+    """Import a version lazily. Importing builds (or reuses) its Qdrant index,
+    so we do it once, on first use."""
     with _lock:
         if version not in _agents:
             log.info("Loading %s ...", version)
@@ -65,7 +65,7 @@ def health():
 @app.post("/ask")
 def ask(req: AskRequest):
     if req.version not in AGENT_MODULES:
-        raise HTTPException(status_code=400, detail="version must be v1, v2 or v3")
+        raise HTTPException(status_code=400, detail="version must be one of: " + ", ".join(AGENT_MODULES))
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="question is required")
     try:

@@ -1,87 +1,114 @@
-"""Qdrant vector store shared by every version.
-
-* Each version has its own collection, named  <collection>_<fingerprint>.
-  The fingerprint is a hash of the chunk texts + embedding model, so a changed PDF or chunking
-  automatically gets a fresh collection and an unchanged one is simply reused (no re-embedding).
-* Point ids are deterministic, so an interrupted indexing run is completed by running again.
-* Safe to import from several processes at once (API server + eval scripts): nothing is deleted.
-"""
+"""Qdrant (cloud or in-memory): one collection per version and per exact content (reused when nothing changed)."""
 import hashlib
+import json
+import time
 import uuid
 
-from .config import (BGE_QUERY_INSTRUCTION, EMBEDDING_DIM, EMBEDDING_MODEL, QDRANT_API_KEY, QDRANT_URL,
-                     USE_QUERY_INSTRUCTION)
+from .config import QDRANT_API_KEY, QDRANT_URL
 
-_embeddings = None
-_clients = {}
-
-
-def get_embeddings():
-    global _embeddings
-    if _embeddings is None:
-        from langchain_huggingface import HuggingFaceEmbeddings
-
-        class QueryInstructionEmbeddings(HuggingFaceEmbeddings):
-            """Same model; only QUERIES get BGE's retrieval instruction (documents are embedded unchanged)."""
-            def embed_query(self, text: str):
-                return super().embed_query(BGE_QUERY_INSTRUCTION + text)
-
-        if USE_QUERY_INSTRUCTION:
-            print("[embeddings] BGE query instruction ON (queries only, no re-indexing needed)")
-            _embeddings = QueryInstructionEmbeddings(model_name=EMBEDDING_MODEL)
-        else:
-            _embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-    return _embeddings
+_client = None
 
 
 def get_client():
-    from qdrant_client import QdrantClient
-    if QDRANT_URL not in _clients:
-        if QDRANT_URL == ":memory:":
-            client = QdrantClient(":memory:")
-        else:
-            client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=60)
+    global _client
+    if _client is None:
+        from qdrant_client import QdrantClient
         try:
-            client.get_collections()
-        except Exception as e:                                     # connection refused, wrong url, ...
-            raise SystemExit(
-                f"Cannot reach Qdrant at {QDRANT_URL} ({type(e).__name__}).\n"
-                "Start it with:\n"
-                "  docker run -d -p 6333:6333 -v qdrant_storage:/qdrant/storage --name qdrant qdrant/qdrant\n"
-                "or set QDRANT_URL=:memory: in backend/.env to use a throw-away in-process Qdrant.") from e
-        _clients[QDRANT_URL] = client
-    return _clients[QDRANT_URL]
+            if QDRANT_URL == ":memory:":
+                _client = QdrantClient(":memory:")
+            else:
+                _client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=60)
+                _client.get_collections()
+        except Exception as e:
+            raise SystemExit(f"Cannot reach Qdrant at {QDRANT_URL} ({type(e).__name__}: {e}).\n"
+                             "Check QDRANT_URL / QDRANT_API_KEY in backend/.env (or set QDRANT_URL=:memory: to test).")
+    return _client
 
 
-def fingerprint(chunks) -> str:
-    h = hashlib.sha1(EMBEDDING_MODEL.encode())
-    for c in chunks:
-        h.update(f"|{c['source']}|{c['page']}|{c['text']}".encode("utf-8"))
-    return h.hexdigest()[:8]
+def fingerprint(version: str, spec: dict, chunks) -> str:
+    blob = json.dumps({"v": version, "chunking": spec["chunking"], "embedding": spec["embedding"],
+                       "texts": [c["text"] for c in chunks]}, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:10]
 
 
-def build_vector_store(collection: str, chunks: list):
-    """Create (or reuse) the Qdrant collection for `chunks` and return a LangChain vector store."""
-    from langchain_qdrant import QdrantVectorStore
-    from qdrant_client.http.models import Distance, VectorParams
+def build_index(version: str, spec: dict, chunks, embedder):
+    """Returns the collection name. Creates and fills it only if this exact content is not indexed yet."""
+    from qdrant_client.http.models import Distance, PointStruct, VectorParams
+    client = get_client()
+    name = f"asterion_{version}_{fingerprint(version, spec, chunks)}"
+    if client.collection_exists(name) and client.count(name, exact=True).count == len(chunks):
+        print(f"{version}: reusing Qdrant collection {name} ({len(chunks)} points)")
+        return name
 
-    client, embeddings = get_client(), get_embeddings()
-    fp = fingerprint(chunks)
-    name = f"{collection}_{fp}"
+    if client.collection_exists(name):
+        client.delete_collection(name)
+    print(f"{version}: embedding {len(chunks)} chunks with {spec['embedding']['model']} ({spec['embedding']['dim']} dims) ...")
+    vectors = embedder.embed_documents([c["text"] for c in chunks])
+    client.create_collection(name, vectors_config=VectorParams(size=spec["embedding"]["dim"], distance=Distance.COSINE))
+    points = [PointStruct(id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{name}/{c['id']}")), vector=v,
+                          payload={"i": i, **c}) for i, (c, v) in enumerate(zip(chunks, vectors))]
+    batch = 8                                    # small batches: big uploads time out on slow connections
+    for s in range(0, len(points), batch):
+        for attempt in range(5):
+            try:
+                client.upsert(name, points=points[s:s + batch], wait=True)
+                break
+            except Exception as e:
+                if attempt == 4:
+                    raise
+                print(f"  upsert retry {attempt + 1}/5 ({type(e).__name__}) ...")
+                time.sleep(3 * (attempt + 1))
+    print(f"{version}: indexed {len(points)} points in {name}")
+    return name
 
-    if not client.collection_exists(name):
-        client.create_collection(name, vectors_config=VectorParams(size=EMBEDDING_DIM, distance=Distance.COSINE))
 
-    store = QdrantVectorStore(client=client, collection_name=name, embedding=embeddings)
-    have = client.count(name, exact=True).count
-    if have < len(chunks):                                          # new or half-finished collection
-        ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, f"{name}/{i}")) for i in range(len(chunks))]
-        store.add_texts(
-            texts=[c["text"] for c in chunks],
-            metadatas=[{"source": c["source"], "page": c["page"], "pages": c["pages"], "chunk_id": i}
-                       for i, c in enumerate(chunks)],
-            ids=ids)
-        print(f"[qdrant] indexed {len(chunks)} chunks into '{name}'")
-    else:
-        print(f"[qdrant] reusing '{name}' ({have} chunks)")
-    return store
+def dense_search(collection: str, vector, limit: int):
+    """[(chunk_index, score)] best first."""
+    res = get_client().query_points(collection_name=collection, query=vector, limit=limit, with_payload=["i"])
+    return [(int(p.payload["i"]), float(p.score)) for p in res.points]
+
+
+def debug_dense_search(collection: str, vector, limit: int, question: str = ""):
+    """Print actual retrieved chunks with scores and character counts."""
+
+    res = get_client().query_points(
+        collection_name=collection,
+        query=vector,
+        limit=limit,
+        with_payload=True
+    )
+
+    print("\n" + "=" * 90)
+    print(f"QUESTION: {question}")
+    print(f"COLLECTION: {collection}")
+    print(f"RETRIEVED: {len(res.points)}")
+    print("=" * 90)
+
+    results = []
+
+    for rank, point in enumerate(res.points, start=1):
+        payload = point.payload or {}
+
+        chunk = {
+            "index": payload.get("i"),
+            "id": payload.get("id", "unknown"),
+            "text": payload.get("text", ""),
+            "score": float(point.score),
+            "metadata": {
+                k: v for k, v in payload.items()
+                if k not in ("i", "id", "text")
+            }
+        }
+
+        results.append(chunk)
+
+        print(f"\n--- RANK {rank} ---")
+        print(f"Chunk index : {chunk['index']}")
+        print(f"Chunk ID    : {chunk['id']}")
+        print(f"Score       : {chunk['score']:.4f}")
+        print(f"Characters  : {len(chunk['text'])}")
+        print("\nCONTENT:")
+        print(chunk["text"])
+        print("-" * 90)
+
+    return results

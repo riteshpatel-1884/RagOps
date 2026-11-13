@@ -17,8 +17,7 @@ export default function ResumePreview() {
       .finally(() => setLoading(false));
   }, []);
 
-  const src = active ? `/resume/${encodeURIComponent(active)}` : "";
-
+  const src = active ? `/document/${encodeURIComponent(active)}` : "";
   return (
     <section className="card preview">
       <div className="card-head">
@@ -46,7 +45,7 @@ export default function ResumePreview() {
         <iframe className="pdf" src={`${src}#view=FitH`} title="Document preview" />
       ) : (
         <div className="empty">
-          No PDF found. Put a PDF in <code>public/resume/</code> (e.g. <code>resume.pdf</code>).
+          No PDF found. Put <code>Asterion_Employee_Handbook.pdf</code> in <code>public/document/</code>.
         </div>
       )}
     </section>

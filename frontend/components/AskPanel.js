@@ -1,29 +1,30 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
+// Add a line here when a new version is ready (the key must match the backend version id).
 const VERSION_INFO = {
-  v1: { title: "Baseline", detail: "raw PDF blocks, top 3 chunks" },
-  v2: { title: "Smaller retriever", detail: "raw PDF blocks, top 1 chunk" },
-  v3: { title: "Merged chunks + cleaner search", detail: "~700-character chunks, top 3 chunks" },
+  v1: { title: "Baseline", detail: "static 500-token chunks · gemini-embedding-001 · vector search, top 3" },
+  v2: { title: "Smaller chunks", detail: "static 250-token chunks · gemini-embedding-001 · vector search, top 4" },
 };
 
 const SUGGESTIONS = [
   {
-    group: "Resume",
-    items: ["What are the candidate's key skills?", "Summarise the candidate's education.", "What projects are listed in the resume?"],
+    group: "Single fact",
+    items: ["How many days of casual leave does a full-time employee get per year?", "What is the notice period for senior employees?"],
   },
   {
-    group: "Company handbook",
-    items: ["What are the standard office hours at Nexora for full-time employees?", "How many days of casual leave are allowed?"],
+    group: "Needs several parts or steps",
+    items: ["How much stipend does an intern earn over a full standard internship?", "Who does Neha Singh report to, and what is that person's designation?"],
   },
   {
-    group: "Not in the documents (should say so)",
-    items: ["What is the candidate's current salary?"],
+    group: "Not in the handbook (should say so)",
+    items: ["What is the company's dress code?", "Does Asterion offer stock options or ESOPs to employees?"],
   },
 ];
 
 export default function AskPanel() {
-  const [version, setVersion] = useState("v3");
+  const versions = Object.keys(VERSION_INFO);
+  const [version, setVersion] = useState(versions[versions.length - 1]);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -66,13 +67,15 @@ export default function AskPanel() {
       <div className="chat-top">
         <div className="card-head">
           <h2>Ask a question</h2>
-          <div className="seg" role="tablist" aria-label="RAG version">
-            {Object.keys(VERSION_INFO).map((v) => (
-              <button key={v} className={version === v ? "seg-btn active" : "seg-btn"} onClick={() => setVersion(v)}>
-                {v}
-              </button>
-            ))}
-          </div>
+          {versions.length > 1 && (
+            <div className="seg" role="tablist" aria-label="RAG version">
+              {versions.map((v) => (
+                <button key={v} className={version === v ? "seg-btn active" : "seg-btn"} onClick={() => setVersion(v)}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <p className="version-note">
           <b>{version} · {info.title}</b> — {info.detail}
@@ -131,7 +134,7 @@ export default function AskPanel() {
       <div className="composer">
         <input
           className="input"
-          placeholder="Ask about the resume or the handbook…"
+          placeholder="Ask about the employee handbook…"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && ask()}

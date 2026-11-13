@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const dir = path.join(process.cwd(), "public", "resume");
+    const dir = path.join(process.cwd(), "public", "document");
     const all = await fs.readdir(dir);
     const files = all.filter((f) => f.toLowerCase().endsWith(".pdf"));
     return NextResponse.json({ files });

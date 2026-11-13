@@ -6,10 +6,10 @@ export default function Home() {
     <>
       <div className="page-head">
         <div className="eyebrow">Playground</div>
-        <h1>Ask the documents</h1>
+        <h1>Ask the handbook</h1>
         <p>
-          Questions are answered from a resume and a company HR handbook. Choose a RAG version
-          (v1, v2 or v3) and compare how each one answers the same question.
+          Questions are answered from the Asterion Digital Systems employee handbook (27 pages). Ask anything the
+          handbook covers, or something it does not, and check that the answer cites the right page.
         </p>
       </div>
       <div className="split">
