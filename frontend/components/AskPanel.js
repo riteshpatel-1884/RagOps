@@ -2,9 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 
 // Add a line here when a new version is ready (the key must match the backend version id).
+// The Ask page answers with v3 only (the best setup). The other versions stay on the Evaluation page as results.
 const VERSION_INFO = {
-  v1: { title: "Baseline", detail: "static 500-token chunks · gemini-embedding-001 · vector search, top 3" },
-  v2: { title: "Smaller chunks", detail: "static 250-token chunks · gemini-embedding-001 · vector search, top 4" },
+  v3: { title: "Section chunks", detail: "handbook-section chunks · gemini-embedding-001 · vector search, 2 to 4 chunks by score" },
 };
 
 const SUGGESTIONS = [

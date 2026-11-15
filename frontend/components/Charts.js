@@ -71,8 +71,8 @@ export function BarChart({ groups, series, yMax = 1, fmt = r2 }) {
                   <rect x={x + 1} y={y} width={bw - 2} height={Math.max(h, 0)} rx="3" fill={series[si].color}>
                     <title>{`${series[si].name} · ${g.label}: ${fmt(v)}`}</title>
                   </rect>
-                  <text x={x + bw / 2} y={y - 5} textAnchor="middle" fontSize="10.5" fontWeight="600" fill="#334155">
-                    {fmt(v)}
+                  <text x={x + bw / 2} y={y - 5} textAnchor="middle" fontSize={bw < 26 ? 9 : 10.5} fontWeight="600" fill="#334155">
+                    {bw < 26 ? fmt(v).replace(/^0\./, ".") : fmt(v)}
                   </text>
                 </g>
               );

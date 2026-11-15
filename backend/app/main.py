@@ -23,14 +23,13 @@ app.add_middleware(
 
 class AskRequest(BaseModel):
     question: str
-    version: str = "v2"  # "v1" | "v2"
+    version: str = "v3"
 
 
 # version -> module that exposes ask(question) -> dict
 AGENT_MODULES = {
-    "v1": "app.versions.v1.RAG_1.agent",  # static 2000-char chunks, vector top 3
-    "v2": "app.versions.v2.RAG_2.agent",  # static 1000-char chunks, vector top 4
-    # "v3": "app.versions.v3.RAG_3.agent",  # add when v3 exists
+    # v3: section chunks (<=800 chars), dynamic top-k 2 to 4. v1 and v2 are kept as evaluation results only.
+    "v3": "app.versions.v3.RAG_3.agent",
 }
 
 _agents = {}

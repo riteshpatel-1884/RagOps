@@ -1,0 +1,140 @@
+{
+  "version": "v3",
+  "name": "experiment_v3_section_chunks_dynamic_k",
+  "spec": {
+    "chunking": {
+      "strategy": "section",
+      "max_chars": 800,
+      "overlap_chars": 100,
+      "min_chars": 250
+    },
+    "embedding": {
+      "model": "gemini-embedding-001",
+      "dim": 768
+    },
+    "retrieval": {
+      "mode": "vector_dynamic",
+      "fetch_k": 8,
+      "min_k": 2,
+      "top_k": 4,
+      "score_margin": 0.08
+    }
+  },
+  "questions": {
+    "total": 105,
+    "answerable": 85,
+    "unanswerable": 20
+  },
+  "judged": 43,
+  "judge": {
+    "answer_relevancy": {
+      "mean": 0.9767441860465116,
+      "ci_low": 0.937984496124031,
+      "ci_high": 1.0,
+      "n": 43
+    },
+    "faithfulness": {
+      "mean": 1.0,
+      "ci_low": 1.0,
+      "ci_high": 1.0,
+      "n": 43
+    },
+    "context_relevancy": {
+      "mean": 0.2672529796801976,
+      "ci_low": 0.19602569384978516,
+      "ci_high": 0.34775477377121783,
+      "n": 43
+    },
+    "context_precision": {
+      "mean": 0.9470284237726098,
+      "ci_low": 0.896640826873385,
+      "ci_high": 0.9844961240310077,
+      "n": 43
+    },
+    "context_recall": {
+      "mean": 0.9767441860465116,
+      "ci_low": 0.9302325581395349,
+      "ci_high": 1.0,
+      "n": 43
+    },
+    "correctness": {
+      "mean": 0.9069767441860465,
+      "ci_low": 0.8395348837209302,
+      "ci_high": 0.9627906976744186,
+      "n": 43
+    }
+  },
+  "hit_rate": {
+    "mean": 0.9764705882352941,
+    "ci_low": 0.9411764705882353,
+    "ci_high": 1,
+    "n": 85
+  },
+  "false_refusal_rate": {
+    "mean": 0.03529411764705882,
+    "ci_low": 0,
+    "ci_high": 0.08235294117647059,
+    "n": 85
+  },
+  "hallucination_rate": {
+    "mean": 0,
+    "ci_low": 0,
+    "ci_high": 0,
+    "n": 20
+  },
+  "abstention_accuracy": {
+    "mean": 1,
+    "ci_low": 1,
+    "ci_high": 1,
+    "n": 20
+  },
+  "latency": {
+    "retrieval_ms": {
+      "p50": 368.19649999961257,
+      "p95": 1404.767699999502,
+      "mean": 448.04791714275433,
+      "n": 105
+    },
+    "ttft_ms": {
+      "p50": 965.3615000133868,
+      "p95": 3756.936099997253,
+      "mean": 1319.521466665347,
+      "n": 105
+    },
+    "total_ms": {
+      "p50": 1071.5189999900758,
+      "p95": 3776.1172200029223,
+      "mean": 1414.746688572701,
+      "n": 105
+    }
+  },
+  "cost_per_query_usd": 0.00016471142857142857,
+  "tokens_per_query": {
+    "input": 511.0285714285714,
+    "output": 146.76190476190476
+  },
+  "by_category": {
+    "multi_hop": {
+      "n": 20,
+      "hit_rate": 0.95,
+      "false_refusal_rate": 0.15,
+      "correctness": 0.8
+    },
+    "multi_part": {
+      "n": 25,
+      "hit_rate": 1,
+      "false_refusal_rate": 0,
+      "correctness": 0.9923076923076923
+    },
+    "single_fact": {
+      "n": 40,
+      "hit_rate": 0.975,
+      "false_refusal_rate": 0,
+      "correctness": 0.905
+    },
+    "unanswerable": {
+      "n": 20,
+      "abstention_accuracy": 1
+    }
+  }
+}

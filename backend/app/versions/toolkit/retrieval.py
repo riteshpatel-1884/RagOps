@@ -1,7 +1,8 @@
-
 """Retrieval strategies and the pipeline factory.
 
   vector         : dense search, top_k                                    (v1)
+  vector_dynamic : dense search fetch_k, keep hits within score_margin of the
+                   best one, at least min_k and at most top_k chunks        (v3)
   vector_rerank  : dense search fetch_k, rerank, keep top_k               (v2)
   hybrid_rerank  : dense + BM25 fused with RRF, child -> parent, rerank   (v3)
 
@@ -42,6 +43,18 @@ def rrf(rankings, k=60):
             key=lambda x: -x[1]
         )
     ]
+
+
+def select_dynamic(hits, min_k, max_k, margin):
+    """hits = [(chunk_index, score)] best first. Keep the best hit, then every hit whose score is within
+    `margin` of it, but never fewer than min_k nor more than max_k chunks."""
+    if not hits:
+        return []
+    best = hits[0][1]
+    keep = [i for i, sc in hits if best - sc <= margin]
+    if len(keep) < min_k:
+        keep = [i for i, _ in hits[:min_k]]
+    return keep[:max_k]
 
 
 class Retriever:
@@ -218,6 +231,37 @@ class Retriever:
                         index=idx
                     )
 
+                self._debug_summary(contexts)
+
+            return contexts, timings
+
+        # ----------------------------------------------
+        # 3b. V3: dynamic top-k (send only what is close to the best hit)
+        # ----------------------------------------------
+
+        if self.mode == "vector_dynamic":
+
+            ranked = select_dynamic(
+                dense_hits,
+                min_k=r.get("min_k", 1),
+                max_k=r["top_k"],
+                margin=r.get("score_margin", 0.05)
+            )
+
+            contexts = [
+                self._context(self.chunks[i])
+                for i in ranked
+            ]
+
+            timings["search_ms"] = (
+                time.perf_counter() - t0
+            ) * 1000
+
+            if debug:
+                print("\n\n### STEP 2: DYNAMIC TOP-K")
+                for rank, (idx, score) in enumerate(dense_hits, start=1):
+                    kept = "KEPT   " if idx in ranked else "dropped"
+                    print(f"{kept} rank {rank} score {score:.4f} chunk {idx} ({len(self.chunks[idx]['text'])} chars)")
                 self._debug_summary(contexts)
 
             return contexts, timings

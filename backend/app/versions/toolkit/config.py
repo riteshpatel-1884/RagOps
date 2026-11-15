@@ -31,7 +31,7 @@ EMBED_PAUSE = float(os.getenv("EMBED_PAUSE", "0.4"))       # seconds between emb
 RERANKER = os.getenv("RERANKER", "flashrank")
 FLASHRANK_MODEL = os.getenv("FLASHRANK_MODEL", "ms-marco-TinyBERT-L-2-v2")
 
-# ---- The three experiments. 1 token is about 4 characters, so 500 tokens = 2000 chars, 100 tokens = 400 chars.
+# ---- The experiments (v1, v2, v3). 1 token is about 4 characters, so 500 tokens = 2000 chars, 100 tokens = 400 chars.
 VERSIONS = {
     "v1": {
         "n": 1, "name": "experiment_v1_baseline", "label": "Baseline",
@@ -39,13 +39,18 @@ VERSIONS = {
         "embedding": {"model": EMBEDDING_1, "dim": 768},
         "retrieval": {"mode": "vector", "top_k": 3},
     },
-        "v2": {
+    "v2": {
         "n": 2, "name": "experiment_v2_smaller_chunks", "label": "Smaller chunks (1000 chars), top 4",
         "chunking": {"strategy": "static", "chunk_chars": 1000, "overlap_chars": 150},
         "embedding": {"model": EMBEDDING_1, "dim": 768},
         "retrieval": {"mode": "vector", "top_k": 4},
     },
-    
+    "v3": {
+        "n": 3, "name": "experiment_v3_section_chunks_dynamic_k", "label": "Section chunks (<=800 chars), dynamic top-k (2 to 4)",
+        "chunking": {"strategy": "section", "max_chars": 800, "overlap_chars": 100, "min_chars": 250},
+        "embedding": {"model": EMBEDDING_1, "dim": 768},
+        "retrieval": {"mode": "vector_dynamic", "fetch_k": 8, "min_k": 2, "top_k": 4, "score_margin": 0.08},
+    },
 }
 
 # ---- Evaluation ----

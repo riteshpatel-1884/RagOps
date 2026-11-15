@@ -1,0 +1,5 @@
+python -m app.versions.cli run v3 --sleep 3
+python -m app.versions.cli judge v3 --every 2 --sleep 10
+python -m app.versions.cli summary v3
+python -m app.versions.cli save v3
+python -m app.versions.cli compare

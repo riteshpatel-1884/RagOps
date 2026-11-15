@@ -110,7 +110,7 @@ export default function EvalDashboard() {
               values: val(l),
             }))}
           />
-          <div className="takeaway">Context relevancy is the weak spot: chunks are about a page long, so most of what is sent is unrelated.</div>
+          <div className="takeaway">Context relevancy is the lowest score for every version, because most of what is sent is unrelated to the question. It rises as less text is sent.</div>
         </div>
         <div className="card chart-card">
           <h3>Failure rates</h3>

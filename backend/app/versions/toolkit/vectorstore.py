@@ -27,7 +27,7 @@ def get_client():
 
 def fingerprint(version: str, spec: dict, chunks) -> str:
     blob = json.dumps({"v": version, "chunking": spec["chunking"], "embedding": spec["embedding"],
-                       "texts": [c["text"] for c in chunks]}, sort_keys=True, ensure_ascii=False)
+                       "texts": [c.get("embed_text", c["text"]) for c in chunks]}, sort_keys=True, ensure_ascii=False)
     return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:10]
 
 
@@ -43,7 +43,7 @@ def build_index(version: str, spec: dict, chunks, embedder):
     if client.collection_exists(name):
         client.delete_collection(name)
     print(f"{version}: embedding {len(chunks)} chunks with {spec['embedding']['model']} ({spec['embedding']['dim']} dims) ...")
-    vectors = embedder.embed_documents([c["text"] for c in chunks])
+    vectors = embedder.embed_documents([c.get("embed_text", c["text"]) for c in chunks])   # embed_text = section path + text (v3)
     client.create_collection(name, vectors_config=VectorParams(size=spec["embedding"]["dim"], distance=Distance.COSINE))
     points = [PointStruct(id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{name}/{c['id']}")), vector=v,
                           payload={"i": i, **c}) for i, (c, v) in enumerate(zip(chunks, vectors))]

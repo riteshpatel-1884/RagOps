@@ -81,6 +81,40 @@ python -m app.versions.cli save v2`,
       { label: "Multi-hop", n: 20, hit: 0.95, fr: 0.1, corr: 0.84 },
     ],
   },
+  {
+    id: "v3",
+    tag: "Section chunks, dynamic top-k",
+    change: "Chunking and retrieval both changed from v2: chunks follow the handbook's own sections (with the section path added to what gets embedded), and the number of chunks sent varies from 2 to 4 by how close the scores are. Embedding, generator, judge and questions are the same as v1 and v2.",
+    effect:
+      "Only about 1,470 characters reach the LLM on average (v1 about 4,170, v2 about 3,030). Context relevancy more than doubled to 0.27 and cost fell 34% against v1, while correctness stayed level (0.91). Multi-hop questions are still the weak spot (false refusal 15%).",
+    pipeline: [
+      ["Corpus", "Asterion_Employee_Handbook.pdf (same as v1 and v2)"],
+      ["Chunking", "One chunk per handbook sub-section. Sections over 800 characters are split (100 overlap, table rows and paragraphs kept whole); sections under 250 characters are merged into the next one in the same chapter"],
+      ["Chunks", "124 chunks, median 347 characters, max 795, across 24 chapters"],
+      ["Embedded text", "Each chunk is embedded together with its section path (for example \"3. About Asterion Digital Systems > 3.5 Operating principles\"), so a short chunk still knows where it belongs. The LLM reads the chunk text itself"],
+      ["Embedding", "gemini-embedding-001, 768 dimensions (same as v1 and v2)"],
+      ["Vector store", "Qdrant Cloud, cosine distance, one collection per version"],
+      ["Retrieval", "Dense search for the 8 closest chunks, then keep the best one plus every chunk scoring within 0.08 of it, at least 2 and at most 4. Averages 3.1 chunks (2 chunks on 42 questions, 3 on 13, 4 on 50)"],
+      ["Generator", "Groq openai/gpt-oss-120b, temperature 0 (same as v1 and v2). About 511 input and 147 output tokens per query"],
+      ["Judge", "DeepEval with Groq openai/gpt-oss-120b (same as v1 and v2)"],
+      ["Questions", "Same 105 questions. Judge metrics on the same 43 answerable questions as v1 and v2"],
+    ],
+    config: `"v3": {
+  "chunking":  {"strategy": "section", "max_chars": 800, "overlap_chars": 100, "min_chars": 250},
+  "embedding": {"model": "gemini-embedding-001", "dim": 768},
+  "retrieval": {"mode": "vector_dynamic", "fetch_k": 8, "min_k": 2, "top_k": 4, "score_margin": 0.08}
+}
+
+python -m app.versions.cli run v3
+python -m app.versions.cli judge v3 --every 2 --sleep 10
+python -m app.versions.cli summary v3
+python -m app.versions.cli save v3`,
+    byType: [
+      { label: "Single fact", n: 40, hit: 0.97, fr: 0.0, corr: 0.91 },
+      { label: "Multi-part", n: 25, hit: 1.0, fr: 0.0, corr: 0.99 },
+      { label: "Multi-hop", n: 20, hit: 0.95, fr: 0.15, corr: 0.8 },
+    ],
+  },
 ];
 
 // better: "up" = higher is better, "down" = lower is better
@@ -91,12 +125,12 @@ export const SECTIONS = [
     title: "Answer and context quality",
     note: "DeepEval judge on 43 answerable questions. Mean with 95% CI",
     metrics: [
-      { label: "Answer correctness", better: "up", fmt: "score", values: [c(0.893, 0.802, 0.967), c(0.914, 0.847, 0.965)] },
-      { label: "Faithfulness", better: "up", fmt: "score", values: [c(1.0, 1.0, 1.0), c(0.996, 0.988, 1.0)] },
-      { label: "Answer relevancy", better: "up", fmt: "score", values: [c(0.989, 0.969, 1.0), c(0.993, 0.982, 1.0)] },
-      { label: "Context precision", better: "up", fmt: "score", values: [c(0.915, 0.849, 0.973), c(0.906, 0.839, 0.961)] },
-      { label: "Context recall", better: "up", fmt: "score", values: [c(0.977, 0.93, 1.0), c(1.0, 1.0, 1.0)] },
-      { label: "Context relevancy", better: "up", fmt: "score", values: [c(0.107, 0.075, 0.146), c(0.146, 0.107, 0.192)] },
+      { label: "Answer correctness", better: "up", fmt: "score", values: [c(0.893, 0.802, 0.967), c(0.914, 0.847, 0.965), c(0.907, 0.84, 0.963)] },
+      { label: "Faithfulness", better: "up", fmt: "score", values: [c(1.0, 1.0, 1.0), c(0.996, 0.988, 1.0), c(1.0, 1.0, 1.0)] },
+      { label: "Answer relevancy", better: "up", fmt: "score", values: [c(0.989, 0.969, 1.0), c(0.993, 0.982, 1.0), c(0.977, 0.938, 1.0)] },
+      { label: "Context precision", better: "up", fmt: "score", values: [c(0.915, 0.849, 0.973), c(0.906, 0.839, 0.961), c(0.947, 0.897, 0.984)] },
+      { label: "Context recall", better: "up", fmt: "score", values: [c(0.977, 0.93, 1.0), c(1.0, 1.0, 1.0), c(0.977, 0.93, 1.0)] },
+      { label: "Context relevancy", better: "up", fmt: "score", values: [c(0.107, 0.075, 0.146), c(0.146, 0.107, 0.192), c(0.267, 0.196, 0.348)] },
     ],
   },
   {
@@ -104,22 +138,22 @@ export const SECTIONS = [
     title: "Retrieval and reliability",
     note: "Judge-free, all 105 questions. Hit rate and false refusal use the 85 answerable, hallucination and abstention the 20 unanswerable",
     metrics: [
-      { label: "Hit rate @3", better: "up", fmt: "score", values: [c(0.953, 0.906, 0.988), c(0.953, 0.906, 0.988)] },
-      { label: "False refusal rate", better: "down", fmt: "score", values: [c(0.059, 0.012, 0.118), c(0.024, 0.0, 0.059)] },
-      { label: "Hallucination rate", better: "down", fmt: "score", values: [c(0.0, 0.0, 0.0), c(0.0, 0.0, 0.0)] },
-      { label: "Abstention accuracy", better: "up", fmt: "score", values: [c(1.0, 1.0, 1.0), c(1.0, 1.0, 1.0)] },
+      { label: "Hit rate @3", better: "up", fmt: "score", values: [c(0.953, 0.906, 0.988), c(0.953, 0.906, 0.988), c(0.976, 0.941, 1.0)] },
+      { label: "False refusal rate", better: "down", fmt: "score", values: [c(0.059, 0.012, 0.118), c(0.024, 0.0, 0.059), c(0.035, 0.0, 0.082)] },
+      { label: "Hallucination rate", better: "down", fmt: "score", values: [c(0.0, 0.0, 0.0), c(0.0, 0.0, 0.0), c(0.0, 0.0, 0.0)] },
+      { label: "Abstention accuracy", better: "up", fmt: "score", values: [c(1.0, 1.0, 1.0), c(1.0, 1.0, 1.0), c(1.0, 1.0, 1.0)] },
     ],
   },
   {
     id: "latency",
     title: "Latency",
-    note: "v1 and v2 were measured on different days; Groq and Gemini load changes a lot, so do not read the latency gap as an effect of the setup",
+    note: "The versions were measured on different days; Groq and Gemini load changes a lot, so do not read the latency gaps as an effect of the setup",
     metrics: [
-      { label: "Retrieval time (p50)", better: "down", fmt: "ms", noCompare: true, values: [p(2724), p(651)] },
-      { label: "Time to first token (p50)", better: "down", fmt: "ms", noCompare: true, values: [p(7166), p(3469)] },
-      { label: "Time to first token (p95)", better: "down", fmt: "ms", noCompare: true, values: [p(10622), p(6774)] },
-      { label: "Total time (p50)", better: "down", fmt: "ms", noCompare: true, values: [p(7398), p(3538)] },
-      { label: "Total time (p95)", better: "down", fmt: "ms", noCompare: true, values: [p(10726), p(7261)] },
+      { label: "Retrieval time (p50)", better: "down", fmt: "ms", noCompare: true, values: [p(2724), p(651), p(368)] },
+      { label: "Time to first token (p50)", better: "down", fmt: "ms", noCompare: true, values: [p(7166), p(3469), p(965)] },
+      { label: "Time to first token (p95)", better: "down", fmt: "ms", noCompare: true, values: [p(10622), p(6774), p(3757)] },
+      { label: "Total time (p50)", better: "down", fmt: "ms", noCompare: true, values: [p(7398), p(3538), p(1072)] },
+      { label: "Total time (p95)", better: "down", fmt: "ms", noCompare: true, values: [p(10726), p(7261), p(3776)] },
     ],
   },
   {
@@ -127,19 +161,20 @@ export const SECTIONS = [
     title: "Cost",
     note: "Groq gpt-oss-120b list price ($0.15 per 1M input, $0.60 per 1M output tokens). Lower is better",
     metrics: [
-      { label: "Average cost / query", better: "down", fmt: "cost", sub: "$0.25 per 1,000 queries", values: [p(0.000249), p(0.000220)] },
+      { label: "Average cost / query", better: "down", fmt: "cost", sub: "$0.25 per 1,000 queries", values: [p(0.000249), p(0.000220), p(0.000165)] },
     ],
   },
 ];
 
 export const NOTES = [
   "105 questions over one document (the 27-page Asterion employee handbook): 40 single fact, 25 multi-part, 20 multi-hop, 20 unanswerable. Every expected answer has verbatim evidence from a specific page. CI = 95% bootstrap interval.",
-  "Judge metrics (correctness, faithfulness, relevancy, context precision, recall and relevancy) were run on the same 43 of the 85 answerable questions (every second one) for every version, to stay within Groq's free limits. With n=43 the intervals are about plus or minus 0.1, so most differences between v1 and v2 are inside the noise.",
-  "v2 changed only chunk size (2,000 to 1,000 characters) and top_k (3 to 4). It improved false refusal (5.9% to 2.4%), multi-hop false refusal (20% to 10%), multi-hop correctness (0.75 to 0.84), context recall (0.98 to 1.00), context relevancy (0.11 to 0.15) and cost (-12%). Single-fact correctness slipped from 0.94 to 0.90, which is about two questions.",
-  "Context relevancy stays low for both versions (0.11 and 0.15). The metric counts the share of retrieved statements that are relevant, and these answers sit in one sentence, so only sentence-sized contexts would score high, at the price of losing multi-fact questions.",
-  "Hit rate @3 looks only at the first 3 retrieved chunks. v2 retrieves 4, so its hit rate @3 (0.953) understates it; an offline retrieval test counting all 4 gave 0.988.",
+  "Judge metrics (correctness, faithfulness, relevancy, context precision, recall and relevancy) were run on the same 43 of the 85 answerable questions (every second one) for every version, to stay within Groq's free limits. With n=43 the intervals are about plus or minus 0.1, so most differences in correctness are inside the noise.",
+  "Answer correctness is level across the three versions (0.89, 0.91, 0.91). The gains are elsewhere: v2 lowered false refusals (5.9% to 2.4%) and lifted multi-hop correctness (0.75 to 0.84); v3 sends far less text for the same correctness.",
+  "Context relevancy rose from 0.11 (v1) to 0.15 (v2) to 0.27 (v3). v3's interval (0.20 to 0.35) does not overlap v1's (0.08 to 0.15), so that gain is real. It is the share of retrieved statements that are relevant, so it rises as less unrelated text is sent: about 4,170 characters per question in v1, 3,030 in v2 and 1,470 in v3.",
+  "Cost per query fell from $0.000249 (v1) to $0.000220 (v2) to $0.000165 (v3), a 34% saving, because fewer tokens go to the model.",
+  "Hit rate @3 looks only at the first 3 retrieved chunks. v2 retrieves 4 and v3 retrieves 2 to 4, so the metric understates v2 and slightly shortchanges v3's fourth chunk.",
   "A FlashRank reranking step was tested offline (no LLM) and not kept: with 1,000-character chunks it lowered the share of multi-evidence questions where every needed fact was retrieved (0.775 vs 0.875 for plain vector search).",
   "Faithfulness is about 1.0 because the model stays inside the retrieved text. It cannot tell you the retrieval was right; correctness and hit rate do.",
-  "Hallucination is 0% and abstention accuracy 100% for both versions: all 20 unanswerable questions were answered with \"I could not find this in the handbook.\"",
-  "Remaining weak spot: multi-hop questions that need rows from different parts of the employee directory (for example a person and their manager). Those facts sit in different chunks, and neither setup reliably retrieves both.",
+  "Hallucination is 0% and abstention accuracy 100% for all three versions: all 20 unanswerable questions were answered with \"I could not find this in the handbook.\"",
+  "Remaining weak spot: multi-hop questions that need rows from different parts of the employee directory (for example a person and their manager). Those facts sit in different chunks, and none of the versions reliably retrieves both.",
 ];

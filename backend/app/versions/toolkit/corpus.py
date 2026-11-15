@@ -1,4 +1,4 @@
-"""PDF -> text blocks -> chunks. Three chunking strategies (static, semantic, parent_child).
+"""PDF -> text blocks -> chunks. Four chunking strategies (static, semantic, parent_child, section).
 
 Add more pages / PDFs: drop them in backend/pdfs/ and re-run `index`. Nothing here is specific to one document.
 """
@@ -187,6 +187,80 @@ def parent_child_chunks(blocks, parent_chars, parent_overlap, child_chars, child
     return out
 
 
+# ---------------------------------------------------------------- section-aware chunking (v3)
+TOP_HEAD = re.compile(r"^(\d{1,2})\.\s+\S")            # "12. Leave, Time Off & Holiday Calendar"
+SUB_HEAD = re.compile(r"^(\d{1,2})\.(\d{1,2})\s+\S")     # "12.1 Annual leave entitlement"
+
+
+def _is_heading_text(t):
+    return len(t) <= 110 and not t.rstrip().endswith((".", ":", ";", ","))     # headings are short and have no full stop
+
+
+def _split_sections(blocks):
+    """Group layout blocks under their numbered headings. Heading numbers must run in order (12 -> 12.1 -> 12.2 -> 13),
+    so list items such as '3. Do this' inside a paragraph are not mistaken for headings."""
+    sections, top, sub = [], 0, 0
+    cur = {"top": 0, "title": "Cover and document control", "top_title": "", "blocks": []}
+    for b in blocks:
+        t = b["text"]
+        head = None
+        if _is_heading_text(t):
+            m = SUB_HEAD.match(t)
+            if m and int(m.group(1)) == top and sub < int(m.group(2)) <= sub + 3:
+                sub = int(m.group(2))
+                head = (t, cur["top_title"])
+            else:
+                m = TOP_HEAD.match(t)
+                if m and top < int(m.group(1)) <= top + 2:
+                    top, sub = int(m.group(1)), 0
+                    head = (t, t)
+        if head:
+            sections.append(cur)
+            cur = {"top": top, "title": head[0], "top_title": head[1], "blocks": []}
+        cur["blocks"].append(b)
+    sections.append(cur)
+    return [s for s in sections if s["blocks"]]
+
+
+def section_chunks(blocks, max_chars, overlap_chars, min_chars):
+    """One chunk per handbook sub-section. A section longer than max_chars is split (rows / paragraphs stay whole).
+    Tiny sections (< min_chars) are merged into the next section of the same chapter when the result still fits.
+    Every chunk also gets 'embed_text' = section path + text: it is what gets embedded, so a short chunk such as
+    '... 8 days' still knows it belongs to '12. Leave > 12.1 Annual leave entitlement'."""
+    items = []
+    for sec in _split_sections(blocks):
+        parts, offs, pos = [], [], 0
+        for b in sec["blocks"]:
+            offs.append((pos, b["source"], b["page"]))
+            parts.append(b["text"])
+            pos += len(b["text"]) + 1
+        items.append({**sec, "text": "\n".join(parts), "offs": offs})
+
+    merged = []
+    for it in items:
+        prev = merged[-1] if merged else None
+        if (prev and len(prev["text"]) < min_chars and prev["top"] == it["top"]
+                and len(prev["text"]) + 1 + len(it["text"]) <= max_chars):
+            shift = len(prev["text"]) + 1
+            prev["offs"] = prev["offs"] + [(p0 + shift, src, pg) for p0, src, pg in it["offs"]]
+            prev["text"] = prev["text"] + "\n" + it["text"]
+        else:
+            merged.append(dict(it))
+
+    out = []
+    for it in merged:
+        crumb = it["title"] if not it["top_title"] or it["top_title"] == it["title"] else f"{it['top_title']} > {it['title']}"
+        pieces = [(it["text"], 0)] if len(it["text"]) <= max_chars else _recursive_split(it["text"], max_chars, overlap_chars)
+        for text, start in pieces:
+            text = text.strip()
+            if not text:
+                continue
+            src, page = _page_at(it["offs"], start)
+            out.append({"id": f"c{len(out):04d}", "text": text, "embed_text": f"{crumb}\n{text}",
+                        "source": src, "page": page, "section": crumb})
+    return out
+
+
 def make_chunks(spec: dict, embedder):
     blocks = load_blocks()
     c = spec["chunking"]
@@ -196,6 +270,13 @@ def make_chunks(spec: dict, embedder):
         return semantic_chunks(blocks, embedder, c["percentile"], c["min_chars"], c["max_chars"])
     if c["strategy"] == "parent_child":
         return parent_child_chunks(blocks, c["parent_chars"], c["parent_overlap"], c["child_chars"], c["child_overlap"])
+    if c["strategy"] == "section":
+        chunks = section_chunks(blocks, c["max_chars"], c["overlap_chars"], c["min_chars"])
+        headings = len({ch["section"].split(" > ")[0] for ch in chunks})
+        if headings < 5:                                  # headings not detected (different PDF layout): do not index garbage
+            print(f"WARNING: only {headings} section headings found, falling back to static chunking")
+            return static_chunks(blocks, c["max_chars"], c["overlap_chars"])
+        return chunks
     raise ValueError(f"unknown chunking strategy {c['strategy']}")
 
 
