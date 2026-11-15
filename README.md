@@ -40,7 +40,7 @@ PDF → text blocks (PyMuPDF, headers and footers removed) → chunks → embedd
 
 ## Results
 
-Judge metrics: 43 answerable questions. Retrieval and reliability metrics: all 105 questions.
+Judge metrics: Retrieval and reliability metrics: all 105 questions.
 
 | Metric | v1 | v2 | v3 |
 |---|---|---|---|
